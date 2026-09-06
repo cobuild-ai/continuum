@@ -31,10 +31,10 @@ class FiveLensEngine:
         overall_passed = all(ev.passed for ev in evals.values())
 
         if overall_passed:
-            summary = f"All 5 SkyBrain-aligned lenses passed with an average rating of {avg_score}/100. Ready for execution."
+            summary = f"5-Lens 정적 룰 검증 완료 (결함 미감지, 종합 점수: {avg_score}/100). 승인 시 실제 AI 코드 합성이 진행됩니다."
         else:
             failed = [name for name, ev in evals.items() if not ev.passed]
-            summary = f"Review failed on lenses: {', '.join(failed)} (Average: {avg_score}/100). Adjustments required."
+            summary = f"5-Lens 검증 결함 감지: {', '.join(failed)} (종합 점수: {avg_score}/100). 보완이 필요합니다."
 
         return LensReport(
             overall_passed=overall_passed,

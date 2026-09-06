@@ -61,15 +61,25 @@ class ChatViewModel(
 
         viewModelScope.launch {
             _uiState.value = ChatUiState.Loading
-            repository.createTask(prompt, targetRepo)
-                .onSuccess { task ->
-                    _uiState.value = ChatUiState.Success(task)
-                    val agentMsg = ai.continuum.android.data.models.ChatMessage(
-                        text = "Task [${task.id}] 시작: ${task.prompt}",
-                        isUser = false,
-                        task = task
-                    )
-                    _messages.value = _messages.value + agentMsg
+            repository.sendChat(prompt, targetRepo)
+                .onSuccess { chatRes ->
+                    if (chatRes.isTask && chatRes.task != null) {
+                        _uiState.value = ChatUiState.Success(chatRes.task)
+                        val agentMsg = ai.continuum.android.data.models.ChatMessage(
+                            text = chatRes.reply,
+                            isUser = false,
+                            task = chatRes.task
+                        )
+                        _messages.value = _messages.value + agentMsg
+                    } else {
+                        _uiState.value = ChatUiState.Idle
+                        val chatMsg = ai.continuum.android.data.models.ChatMessage(
+                            text = chatRes.reply,
+                            isUser = false,
+                            task = null
+                        )
+                        _messages.value = _messages.value + chatMsg
+                    }
                 }
                 .onFailure { err ->
                     _uiState.value = ChatUiState.Error(err.message ?: "Unknown error")
@@ -84,15 +94,45 @@ class ChatViewModel(
         }
     }
 
+    /**
+     * Updates the task inside any existing message that references the given taskId.
+     * This ensures ChatScreen re-renders with the latest task state (diff, merge status, etc).
+     */
+    private fun updateTaskInMessages(updatedTask: TaskResponse) {
+        _messages.value = _messages.value.map { msg ->
+            if (msg.task?.id == updatedTask.id) {
+                msg.copy(task = updatedTask)
+            } else {
+                msg
+            }
+        }
+    }
+
     fun approveDesign(taskId: String) {
         viewModelScope.launch {
             _uiState.value = ChatUiState.Loading
             repository.approveTask(taskId, approved = true)
                 .onSuccess { task ->
                     _uiState.value = ChatUiState.Success(task)
+                    // Update existing message with new task data (now includes diffSummary)
+                    updateTaskInMessages(task)
+                    // Add confirmation message
+                    val confirmMsg = ai.continuum.android.data.models.ChatMessage(
+                        text = "✅ Design approved. Sandbox execution complete — Diff ready for review.",
+                        isUser = false,
+                        task = null
+                    )
+                    _messages.value = _messages.value + confirmMsg
                 }
                 .onFailure { err ->
                     _uiState.value = ChatUiState.Error(err.message ?: "Approval failed")
+                    val errMsg = ai.continuum.android.data.models.ChatMessage(
+                        text = "⚠️ 승인 처리 실패: ${err.message ?: "서버 응답 없음"}",
+                        isUser = false,
+                        isError = true,
+                        errorMessage = err.message
+                    )
+                    _messages.value = _messages.value + errMsg
                 }
         }
     }
@@ -102,6 +142,12 @@ class ChatViewModel(
             repository.approveTask(taskId, approved = false, feedback = "Rejected by user")
                 .onSuccess { task ->
                     _uiState.value = ChatUiState.Success(task)
+                    updateTaskInMessages(task)
+                    val rejectMsg = ai.continuum.android.data.models.ChatMessage(
+                        text = "🚫 Task [$taskId] rejected by user.",
+                        isUser = false
+                    )
+                    _messages.value = _messages.value + rejectMsg
                 }
         }
     }
@@ -112,12 +158,26 @@ class ChatViewModel(
             repository.approveTask(taskId, approved = true)
                 .onSuccess { task ->
                     _uiState.value = ChatUiState.Success(task)
+                    updateTaskInMessages(task)
                     if (task.state == TaskState.MERGED) {
+                        val mergeMsg = ai.continuum.android.data.models.ChatMessage(
+                            text = "🎉 All changes squash-merged into ${task.branchName.substringBefore("/")} successfully!",
+                            isUser = false,
+                            task = null
+                        )
+                        _messages.value = _messages.value + mergeMsg
                         onMerged()
                     }
                 }
                 .onFailure { err ->
                     _uiState.value = ChatUiState.Error(err.message ?: "Merge failed")
+                    val errMsg = ai.continuum.android.data.models.ChatMessage(
+                        text = "⚠️ 머지 실패: ${err.message ?: "서버 응답 없음"}",
+                        isUser = false,
+                        isError = true,
+                        errorMessage = err.message
+                    )
+                    _messages.value = _messages.value + errMsg
                 }
         }
     }
@@ -126,6 +186,9 @@ class ChatViewModel(
         val targetId = taskId ?: activeTask.value?.id ?: return
         viewModelScope.launch {
             repository.refreshTask(targetId)
+                .onSuccess { task ->
+                    updateTaskInMessages(task)
+                }
         }
     }
 }

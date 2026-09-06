@@ -93,6 +93,20 @@ class FCMPayload(BaseModel):
     action_type: Optional[str] = None  # DESIGN_APPROVAL, MERGE_APPROVAL, VIEW_ERROR
 
 
+class VerificationReport(BaseModel):
+    """Execution and test verification metrics for the task."""
+    verified: bool = False
+    tests_passed: bool = False
+    total_tests: int = 0
+    passed_tests: int = 0
+    failed_tests: int = 0
+    execution_time_seconds: float = 0.0
+    command_run: str = ""
+    summary: str = ""
+    iterations: int = 1
+    raw_output: str = ""
+
+
 class TaskResponse(BaseModel):
     """Complete task response object."""
     id: str
@@ -101,6 +115,7 @@ class TaskResponse(BaseModel):
     branch_name: str
     lens_report: Optional[LensReport] = None
     diff_summary: Optional[DiffSummary] = None
+    verification_report: Optional[VerificationReport] = None
     error_message: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -119,4 +134,25 @@ class ProjectInfo(BaseModel):
 class ProjectSelectRequest(BaseModel):
     """Request to set the active managed project."""
     path: str
+
+
+class ProjectCreateRequest(BaseModel):
+    """Request to create and provision a new managed project."""
+    name: str
+    parent_path: Optional[str] = None
+    tech_stack: Optional[str] = "python"  # python, android, node, default
+
+
+class ChatRequest(BaseModel):
+    """Conversational Vibe Coding input request."""
+    message: str
+    target_repo_path: Optional[str] = None
+    conversation_history: List[Dict[str, str]] = Field(default_factory=list)
+
+
+class ChatResponse(BaseModel):
+    """Conversational Vibe Coding output response."""
+    reply: str
+    is_task: bool = False
+    task: Optional[TaskResponse] = None
 

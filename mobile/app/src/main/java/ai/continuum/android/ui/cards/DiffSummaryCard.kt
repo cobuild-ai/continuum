@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ai.continuum.android.data.models.DiffSummary
 import ai.continuum.android.data.models.FileDiff
+import ai.continuum.android.data.models.VerificationReport
 import ai.continuum.android.ui.theme.*
 
 @Composable
@@ -29,6 +30,8 @@ fun DiffSummaryCard(
     onInspectDiff: () -> Unit,
     onAcceptAll: () -> Unit,
     onRejectAll: () -> Unit,
+    verificationReport: VerificationReport? = null,
+    isActionable: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val displayFiles = diffSummary.files
@@ -41,6 +44,64 @@ fun DiffSummaryCard(
             .border(1.dp, CardBorder, RoundedCornerShape(12.dp))
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
+            // Verification Report Banner
+            if (verificationReport != null) {
+                val isSuccess = verificationReport.testsPassed || verificationReport.verified
+                val bgColor = if (isSuccess) PassGreen.copy(alpha = 0.12f) else if (verificationReport.failedTests > 0) FailRed.copy(alpha = 0.12f) else SurfaceDark
+                val textColor = if (isSuccess) PassGreen else if (verificationReport.failedTests > 0) FailRed else TextPrimary
+
+                Surface(
+                    color = bgColor,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                    ) {
+                        val iconEmoji = if (isSuccess) "🧪" else if (verificationReport.failedTests > 0) "⚠️" else "⚙️"
+                        Text(text = iconEmoji, fontSize = 14.sp)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            val title = if (verificationReport.totalTests > 0) {
+                                if (verificationReport.testsPassed) {
+                                    "Tests: ${verificationReport.passedTests}/${verificationReport.totalTests} Passed (100%)"
+                                } else {
+                                    "Tests: ${verificationReport.failedTests} Failed (${verificationReport.passedTests}/${verificationReport.totalTests})"
+                                }
+                            } else {
+                                if (verificationReport.verified) "Autonomous Verification Passed" else "Agent Verification Completed"
+                            }
+
+                            Text(
+                                text = title,
+                                color = textColor,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+
+                            val detailText = if (verificationReport.commandRun.isNotEmpty()) {
+                                "${verificationReport.commandRun} • ${verificationReport.iterations} Turn(s)"
+                            } else if (verificationReport.summary.isNotEmpty()) {
+                                verificationReport.summary
+                            } else {
+                                ""
+                            }
+                            if (detailText.isNotEmpty()) {
+                                Text(
+                                    text = detailText,
+                                    color = TextSecondary,
+                                    fontSize = 11.sp,
+                                    fontFamily = FontFamily.Monospace,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+                    }
+                }
+                HorizontalDivider(color = CardBorder, thickness = 1.dp)
+            }
+
             // Files List
             if (displayFiles.isNotEmpty()) {
                 Column(
@@ -114,38 +175,48 @@ fun DiffSummaryCard(
                     )
                 }
 
-                // Action Buttons: Reject / Accept all
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    TextButton(
-                        onClick = onRejectAll,
-                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
+                // Action Buttons: Reject / Accept all (only when isActionable)
+                if (isActionable) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.End
                     ) {
-                        Text(
-                            text = "Reject",
-                            color = TextSecondary,
-                            fontSize = 12.sp
-                        )
-                    }
+                        TextButton(
+                            onClick = onRejectAll,
+                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = "Reject",
+                                color = TextSecondary,
+                                fontSize = 12.sp
+                            )
+                        }
 
-                    Spacer(modifier = Modifier.width(4.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
 
-                    Button(
-                        onClick = onAcceptAll,
-                        colors = ButtonDefaults.buttonColors(containerColor = IDEButtonBlue),
-                        shape = RoundedCornerShape(8.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                        modifier = Modifier.height(32.dp)
-                    ) {
-                        Text(
-                            text = "Accept all",
-                            color = TextPrimary,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
+                        Button(
+                            onClick = onAcceptAll,
+                            colors = ButtonDefaults.buttonColors(containerColor = IDEButtonBlue),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                            modifier = Modifier.height(32.dp)
+                        ) {
+                            Text(
+                                text = "Accept all",
+                                color = TextPrimary,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
                     }
+                } else {
+                    Text(
+                        text = "✓ Merged",
+                        color = PassGreen,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(end = 4.dp)
+                    )
                 }
             }
         }

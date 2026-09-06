@@ -1,4 +1,5 @@
 """Unit tests for FastAPI REST endpoints."""
+from pathlib import Path
 from fastapi.testclient import TestClient
 from vibe_server.main import app
 from vibe_server.core.states import TaskState
@@ -14,10 +15,14 @@ def test_health_check():
     assert "Continuum" in data["service"]
 
 
-def test_task_lifecycle_api_flow():
+def test_task_lifecycle_api_flow(tmp_path: Path):
+    from vibe_server.core.project_provisioner import ProjectProvisioner
+    ProjectProvisioner.ensure_git_repository(tmp_path)
+
     # 1. Create task
     create_payload = {
-        "prompt": "Refactor database connection pool with health check ping",
+        "prompt": "Create helper.py with an add function",
+        "target_repo_path": str(tmp_path),
         "base_branch": "main"
     }
     res = client.post("/api/v1/tasks", json=create_payload)

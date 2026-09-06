@@ -15,19 +15,25 @@ from rich.console import Console
 from rich.table import Table
 
 from vibe_server.core.config import settings
+from vibe_server.core.conversational_agent import ConversationalAgent
 from vibe_server.core.diagnostics import CheckStatus, PreflightAssessor
 from vibe_server.core.models import (
     ApprovalRequest,
+    ChatRequest,
+    ChatResponse,
     DiffSummary,
+    ProjectCreateRequest,
     ProjectInfo,
     ProjectSelectRequest,
     TaskCreateRequest,
     TaskResponse,
 )
+from vibe_server.core.project_provisioner import ProjectProvisioner
 from vibe_server.core.states import TaskState, TaskStateMachine
 from vibe_server.lens.engine import FiveLensEngine
 from vibe_server.notify.fcm_notifier import FCMNotifier
 from vibe_server.sandbox.git_workspace import GitWorkspaceManager
+from vibe_server.sandbox.synthesizer import CodeSynthesizer
 
 console = Console()
 app = FastAPI(
@@ -40,6 +46,8 @@ app = FastAPI(
 tasks_db: Dict[str, dict] = {}
 notifier = FCMNotifier()
 lens_engine = FiveLensEngine()
+code_synth = CodeSynthesizer()
+conv_agent = ConversationalAgent()
 
 
 @app.get("/health", tags=["System"])
@@ -72,17 +80,41 @@ def diagnostics_check():
     }
 
 
-active_project_path: str = str(settings.default_workspace_root / "01-production" / "deartalk-ai")
+active_project_path: str = str(settings.default_workspace_root / "deartalk-ai")
+
+
+def _extract_project_description(project_dir: Path) -> str:
+    """Dynamically extracts a description from README.md or pyproject.toml without hardcoding."""
+    readme = project_dir / "README.md"
+    if readme.exists():
+        try:
+            lines = readme.read_text(encoding="utf-8").splitlines()
+            for line in lines:
+                clean = line.strip().lstrip("#").strip()
+                if clean and not clean.startswith(("[", "!", "<", "---")):
+                    return clean[:80]
+        except Exception:
+            pass
+    pyproject = project_dir / "pyproject.toml"
+    if pyproject.exists():
+        try:
+            content = pyproject.read_text(encoding="utf-8")
+            match = re.search(r'description\s*=\s*["\']([^"\']+)["\']', content)
+            if match:
+                return match.group(1).strip()[:80]
+        except Exception:
+            pass
+    return "Managed Workspace Project"
 
 
 def discover_projects(workspace_root: Path) -> List[ProjectInfo]:
     """Scan and return all production projects under workspace."""
     projects: List[ProjectInfo] = []
-    prod_dir = workspace_root / "01-production"
-    if not prod_dir.exists():
+    scan_dir = workspace_root / "01-production" if (workspace_root / "01-production").exists() else workspace_root
+    if not scan_dir.exists():
         return projects
 
-    for item in sorted(prod_dir.iterdir()):
+    for item in sorted(scan_dir.iterdir()):
         if item.is_dir() and not item.name.startswith((".", "__")):
             is_git = (item / ".git").exists()
             branch = "main"
@@ -98,17 +130,7 @@ def discover_projects(workspace_root: Path) -> List[ProjectInfo]:
                 except Exception:
                     pass
 
-            desc = "Production Managed Project"
-            if item.name == "deartalk-ai":
-                desc = "On-Device SLM AI Chat Application (Android)"
-            elif item.name == "skybrain":
-                desc = "Local SLM Serving Daemon & MCP Server"
-            elif item.name == "continuum":
-                desc = "Mobile Vibe Server & Android Companion"
-            elif item.name == "skynexus":
-                desc = "Orchestrator Gateway & Pipeline Service"
-            elif item.name == "myskynet":
-                desc = "Cloud Coordination & Multi-Node Cluster"
+            desc = _extract_project_description(item)
 
             projects.append(ProjectInfo(
                 name=item.name,
@@ -133,7 +155,7 @@ def get_active_project():
     global active_project_path
     p = Path(active_project_path)
     if not p.exists():
-        active_project_path = str(settings.default_workspace_root / "01-production" / "deartalk-ai")
+        active_project_path = str(settings.default_workspace_root / "deartalk-ai")
         p = Path(active_project_path)
 
     is_git = (p / ".git").exists()
@@ -162,13 +184,69 @@ def get_active_project():
 
 @app.post("/api/v1/projects/select", response_model=ProjectInfo, tags=["Projects"])
 def select_project(req: ProjectSelectRequest):
-    """Set the active managed project path."""
+    """Set the active managed project path and ensure it is properly Git provisioned."""
     global active_project_path
-    p = Path(req.path)
+    raw_path = Path(req.path)
+    if not raw_path.is_absolute():
+        p = (settings.default_workspace_root / req.path).resolve()
+    else:
+        p = raw_path.resolve()
+
     if not p.exists() or not p.is_dir():
         raise HTTPException(status_code=400, detail=f"Invalid project path: {req.path}")
+    
+    # Ensure Git sovereignty and .gitignore
+    ProjectProvisioner.ensure_git_repository(p)
     active_project_path = str(p.resolve())
     return get_active_project()
+
+
+@app.post("/api/v1/projects/create", response_model=ProjectInfo, tags=["Projects"])
+def create_project(req: ProjectCreateRequest):
+    """
+    Creates and provisions a new project under 01-production with automatic Git and tailored .gitignore.
+    Binds the newly created project as the single active managed project.
+    """
+    global active_project_path
+    parent = Path(req.parent_path).resolve() if req.parent_path else settings.default_workspace_root
+    new_dir = (parent / req.name).resolve()
+    new_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Ensure Git & tailored .gitignore
+    ProjectProvisioner.ensure_git_repository(new_dir)
+    active_project_path = str(new_dir.resolve())
+    return get_active_project()
+
+
+@app.post("/api/v1/chat", response_model=ChatResponse, tags=["Chat"])
+def chat_with_agent(req: ChatRequest):
+    """
+    Conversational Vibe Coding endpoint (Antigravity-style mobile pair programming).
+    - If inquiry / question / discussion: returns AI markdown reply directly.
+    - If actionable code task: creates Task, runs 5-Lens, and returns task for approval.
+    """
+    target_path = Path(req.target_repo_path or active_project_path)
+    
+    # Check if user intent is an action-oriented code task
+    if conv_agent.is_code_task_intent(req.message):
+        task_res = create_task(TaskCreateRequest(
+            prompt=req.message,
+            target_repo_path=str(target_path),
+            base_branch="main"
+        ))
+        return ChatResponse(
+            reply=f"🛠️ **[{target_path.name}]** 코드 구현 태스크가 접수되었습니다. SkyBrain 5-Lens 정합성 검토를 완료했습니다. 검토 후 실행을 승인해주세요.",
+            is_task=True,
+            task=task_res
+        )
+    else:
+        # Conversational Q&A / architecture dialog
+        reply_text = conv_agent.chat(target_path, req.message, req.conversation_history)
+        return ChatResponse(
+            reply=reply_text,
+            is_task=False,
+            task=None
+        )
 
 
 @app.post("/api/v1/tasks", response_model=TaskResponse, status_code=status.HTTP_201_CREATED, tags=["Tasks"])
@@ -193,6 +271,7 @@ def create_task(req: TaskCreateRequest):
         "branch_name": branch_name,
         "lens_report": report,
         "diff_summary": None,
+        "verification_report": None,
         "error_message": None,
         "created_at": datetime.now(timezone.utc),
         "updated_at": datetime.now(timezone.utc),
@@ -210,6 +289,7 @@ def create_task(req: TaskCreateRequest):
         state=sm.current_state,
         branch_name=branch_name,
         lens_report=report,
+        verification_report=None,
         created_at=task_data["created_at"],
         updated_at=task_data["updated_at"]
     )
@@ -227,6 +307,7 @@ def get_task(task_id: str):
         branch_name=t["branch_name"],
         lens_report=t["lens_report"],
         diff_summary=t["diff_summary"],
+        verification_report=t.get("verification_report"),
         error_message=t["error_message"],
         created_at=t["created_at"],
         updated_at=t["updated_at"]
@@ -260,36 +341,49 @@ def approve_task_stage(task_id: str, req: ApprovalRequest):
     if sm.current_state == TaskState.AWAITING_DESIGN_APPROVAL:
         sm.transition_to(TaskState.SANDBOX_EXECUTING)
         
-        if has_git:
-            git_mgr = GitWorkspaceManager(target_path, branch_prefix=settings.ai_branch_prefix)
-            try:
-                git_mgr.create_task_branch(task_id, base_branch=t["base_branch"])
-                t["diff_summary"] = git_mgr.get_diff(task_id, base_branch=t["base_branch"])
-            except Exception:
-                t["diff_summary"] = DiffSummary(total_files_changed=0, total_additions=0, total_deletions=0, files=[])
-        else:
-            t["diff_summary"] = DiffSummary(total_files_changed=0, total_additions=0, total_deletions=0, files=[])
+        if not has_git:
+            t["error_message"] = f"Target path is not a valid Git repository: {target_path}"
+            sm.transition_to(TaskState.FAILED)
+            t["state"] = sm.current_state
+            t["updated_at"] = datetime.now(timezone.utc)
+            return get_task(task_id)
 
-        sm.transition_to(TaskState.DIFF_READY)
-        sm.transition_to(TaskState.AWAITING_MERGE_APPROVAL)
-        
-        diff_summary = t["diff_summary"]
-        notifier.notify_diff_ready(
-            task_id,
-            diff_summary.total_files_changed,
-            diff_summary.total_additions,
-            diff_summary.total_deletions
-        )
+        git_mgr = GitWorkspaceManager(target_path, branch_prefix=settings.ai_branch_prefix)
+        try:
+            git_mgr.create_task_branch(task_id, base_branch=t["base_branch"])
+            _, ver_report = code_synth.execute_and_verify(target_path, t["prompt"], task_id)
+            t["verification_report"] = ver_report
+            t["diff_summary"] = git_mgr.get_diff(task_id, base_branch=t["base_branch"])
+            sm.transition_to(TaskState.DIFF_READY)
+            sm.transition_to(TaskState.AWAITING_MERGE_APPROVAL)
+            
+            diff_summary = t["diff_summary"]
+            notifier.notify_diff_ready(
+                task_id,
+                diff_summary.total_files_changed,
+                diff_summary.total_additions,
+                diff_summary.total_deletions
+            )
+        except Exception as e:
+            t["error_message"] = f"Task execution failed: {e}"
+            sm.transition_to(TaskState.FAILED)
 
     # If at AWAITING_MERGE_APPROVAL -> finalize squash merge
     elif sm.current_state == TaskState.AWAITING_MERGE_APPROVAL:
-        if has_git:
-            git_mgr = GitWorkspaceManager(target_path, branch_prefix=settings.ai_branch_prefix)
-            try:
-                git_mgr.squash_merge(task_id, base_branch=t["base_branch"])
-            except Exception:
-                pass
-        sm.transition_to(TaskState.MERGED)
+        if not has_git:
+            t["error_message"] = f"Target path is not a valid Git repository: {target_path}"
+            sm.transition_to(TaskState.FAILED)
+            t["state"] = sm.current_state
+            t["updated_at"] = datetime.now(timezone.utc)
+            return get_task(task_id)
+
+        git_mgr = GitWorkspaceManager(target_path, branch_prefix=settings.ai_branch_prefix)
+        try:
+            git_mgr.squash_merge(task_id, base_branch=t["base_branch"])
+            sm.transition_to(TaskState.MERGED)
+        except Exception as e:
+            t["error_message"] = f"Squash merge failed: {e}"
+            sm.transition_to(TaskState.FAILED)
 
     t["state"] = sm.current_state
     t["updated_at"] = datetime.now(timezone.utc)

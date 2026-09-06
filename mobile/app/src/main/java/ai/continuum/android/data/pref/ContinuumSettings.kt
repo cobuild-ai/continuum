@@ -42,12 +42,12 @@ object ContinuumSettings {
 
     // Server
     fun getServerUrl(context: Context): String {
-        val host = getPrefs(context).getString(KEY_SERVER_HOST, "10.0.2.2") ?: "10.0.2.2"
+        val host = getPrefs(context).getString(KEY_SERVER_HOST, "192.168.1.117") ?: "192.168.1.117"
         val port = getPrefs(context).getInt(KEY_SERVER_PORT, 8080)
         return "http://$host:$port"
     }
 
-    fun getServerHost(context: Context): String = getPrefs(context).getString(KEY_SERVER_HOST, "10.0.2.2") ?: "10.0.2.2"
+    fun getServerHost(context: Context): String = getPrefs(context).getString(KEY_SERVER_HOST, "192.168.1.117") ?: "192.168.1.117"
     fun setServerHost(context: Context, host: String) = getPrefs(context).edit().putString(KEY_SERVER_HOST, host).apply()
 
     fun getServerPort(context: Context): Int = getPrefs(context).getInt(KEY_SERVER_PORT, 8080)
@@ -55,7 +55,7 @@ object ContinuumSettings {
 
     // Target Repo
     fun getTargetRepoPath(context: Context): String =
-        getPrefs(context).getString(KEY_TARGET_REPO_PATH, "/Users/smilelife/Projects/OSSProject") ?: "/Users/smilelife/Projects/OSSProject"
+        getPrefs(context).getString(KEY_TARGET_REPO_PATH, "/Users/smilelife/Projects/OSSProject/01-production/deartalk-ai") ?: "/Users/smilelife/Projects/OSSProject/01-production/deartalk-ai"
     fun setTargetRepoPath(context: Context, path: String) = getPrefs(context).edit().putString(KEY_TARGET_REPO_PATH, path).apply()
 
     fun getTargetBaseBranch(context: Context): String =

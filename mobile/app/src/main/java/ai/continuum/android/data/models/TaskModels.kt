@@ -39,6 +39,19 @@ data class ApprovalRequest(
     val feedback: String? = null
 )
 
+data class VerificationReport(
+    val verified: Boolean = false,
+    @SerializedName("tests_passed") val testsPassed: Boolean = false,
+    @SerializedName("total_tests") val totalTests: Int = 0,
+    @SerializedName("passed_tests") val passedTests: Int = 0,
+    @SerializedName("failed_tests") val failedTests: Int = 0,
+    @SerializedName("execution_time_seconds") val executionTimeSeconds: Double = 0.0,
+    @SerializedName("command_run") val commandRun: String = "",
+    val summary: String = "",
+    val iterations: Int = 1,
+    @SerializedName("raw_output") val rawOutput: String = ""
+)
+
 data class TaskResponse(
     val id: String,
     val prompt: String,
@@ -46,6 +59,7 @@ data class TaskResponse(
     @SerializedName("branch_name") val branchName: String,
     @SerializedName("lens_report") val lensReport: LensReport? = null,
     @SerializedName("diff_summary") val diffSummary: DiffSummary? = null,
+    @SerializedName("verification_report") val verificationReport: VerificationReport? = null,
     @SerializedName("error_message") val errorMessage: String? = null,
     @SerializedName("created_at") val createdAt: String? = null,
     @SerializedName("updated_at") val updatedAt: String? = null
@@ -72,5 +86,16 @@ data class ChatMessage(
     val task: TaskResponse? = null,
     val isError: Boolean = false,
     val errorMessage: String? = null
+)
+
+data class ChatRequest(
+    val message: String,
+    @SerializedName("target_repo_path") val targetRepoPath: String? = null
+)
+
+data class ChatResponse(
+    val reply: String,
+    @SerializedName("is_task") val isTask: Boolean = false,
+    val task: TaskResponse? = null
 )
 

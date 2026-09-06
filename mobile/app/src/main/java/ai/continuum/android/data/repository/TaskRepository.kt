@@ -72,6 +72,35 @@ class TaskRepository {
         }
     }
 
+    suspend fun sendChat(message: String, targetRepo: String? = null): Result<ChatResponse> {
+        return try {
+            val repo = targetRepo ?: _activeProject.value?.path
+            val res = api.chatWithAgent(ChatRequest(message = message, targetRepoPath = repo))
+            if (res.isSuccessful && res.body() != null) {
+                val chatRes = res.body()!!
+                if (chatRes.isTask && chatRes.task != null) {
+                    _activeTask.value = chatRes.task
+                }
+                Result.success(chatRes)
+            } else {
+                // Fallback to direct task creation if chat endpoint returns error
+                val fallbackTaskRes = createTask(message, repo)
+                if (fallbackTaskRes.isSuccess) {
+                    val task = fallbackTaskRes.getOrNull()!!
+                    Result.success(ChatResponse(
+                        reply = "🛠️ 코드 구현 태스크가 접수되었습니다.",
+                        isTask = true,
+                        task = task
+                    ))
+                } else {
+                    Result.failure(Exception("Chat failed: ${res.code()}"))
+                }
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun createTask(prompt: String, targetRepo: String? = null): Result<TaskResponse> {
         return try {
             val repo = targetRepo ?: _activeProject.value?.path

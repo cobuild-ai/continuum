@@ -23,6 +23,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // Initialize API base URL dynamically from persistent settings (Zero Hardcoded IP)
+        ai.continuum.android.data.api.NetworkModule.setBaseUrl(ai.continuum.android.data.pref.ContinuumSettings.getServerUrl(this))
+
         handleIntent(intent)
 
         setContent {

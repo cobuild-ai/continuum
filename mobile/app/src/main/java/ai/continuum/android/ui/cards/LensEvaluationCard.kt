@@ -156,11 +156,12 @@ fun LensEvaluationCard(
                     OutlinedButton(
                         onClick = onReject,
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = FailRed),
+                        contentPadding = PaddingValues(horizontal = 6.dp),
                         modifier = Modifier.weight(1f)
                     ) {
-                        Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.size(14.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Reject")
+                        Text("Reject", fontSize = 12.sp, maxLines = 1)
                     }
 
                     Spacer(modifier = Modifier.width(8.dp))
@@ -168,9 +169,10 @@ fun LensEvaluationCard(
                     Button(
                         onClick = onApprove,
                         colors = ButtonDefaults.buttonColors(containerColor = PrimaryCyan),
-                        modifier = Modifier.weight(2f)
+                        contentPadding = PaddingValues(horizontal = 8.dp),
+                        modifier = Modifier.weight(2.4f)
                     ) {
-                        Text("Approve & Sandbox Run", color = BackgroundDark, fontWeight = FontWeight.Bold)
+                        Text("Approve & Sandbox Run", color = BackgroundDark, fontWeight = FontWeight.Bold, fontSize = 12.sp, maxLines = 1)
                     }
                 }
             }

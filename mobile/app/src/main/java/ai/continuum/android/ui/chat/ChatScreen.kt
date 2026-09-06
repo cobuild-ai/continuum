@@ -46,9 +46,10 @@ fun ChatScreen(
     var showProjectPicker by remember { mutableStateOf(false) }
     val listState = androidx.compose.foundation.lazy.rememberLazyListState()
 
-    LaunchedEffect(messages.size) {
-        if (messages.isNotEmpty()) {
-            listState.animateScrollToItem(messages.size - 1)
+    LaunchedEffect(messages.size, uiState) {
+        if (messages.isNotEmpty() || uiState is ChatUiState.Loading) {
+            val target = if (uiState is ChatUiState.Loading) messages.size else maxOf(0, messages.size - 1)
+            listState.animateScrollToItem(target)
         }
     }
 
@@ -151,6 +152,16 @@ fun ChatScreen(
                             .fillMaxWidth()
                             .border(1.dp, CardBorder, RoundedCornerShape(16.dp))
                     ) {
+                        // Linear progress indicator while waiting for AI
+                        if (uiState is ChatUiState.Loading) {
+                            LinearProgressIndicator(
+                                color = PrimaryCyan,
+                                trackColor = CardBorder,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(2.dp)
+                            )
+                        }
                         Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
                             // Text Input Field
                             TextField(
@@ -220,24 +231,36 @@ fun ChatScreen(
                                     }
                                 }
 
-                                // Send Button
+                                // Send Button with loading state
                                 IconButton(
                                     onClick = {
-                                        if (promptInput.isNotBlank()) {
+                                        if (promptInput.isNotBlank() && uiState !is ChatUiState.Loading) {
                                             val textToSend = promptInput
                                             promptInput = ""
                                             viewModel.sendPrompt(textToSend)
                                         }
                                     },
-                                    colors = IconButtonDefaults.iconButtonColors(containerColor = IDEButtonBlue),
+                                    enabled = uiState !is ChatUiState.Loading,
+                                    colors = IconButtonDefaults.iconButtonColors(
+                                        containerColor = if (uiState is ChatUiState.Loading) IDETagBg else IDEButtonBlue,
+                                        disabledContainerColor = IDETagBg
+                                    ),
                                     modifier = Modifier.size(28.dp)
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.AutoMirrored.Filled.Send,
-                                        contentDescription = "Send",
-                                        tint = TextPrimary,
-                                        modifier = Modifier.size(14.dp)
-                                    )
+                                    if (uiState is ChatUiState.Loading) {
+                                        CircularProgressIndicator(
+                                            color = PrimaryCyan,
+                                            strokeWidth = 2.dp,
+                                            modifier = Modifier.size(14.dp)
+                                        )
+                                    } else {
+                                        Icon(
+                                            imageVector = Icons.AutoMirrored.Filled.Send,
+                                            contentDescription = "Send",
+                                            tint = TextPrimary,
+                                            modifier = Modifier.size(14.dp)
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -269,7 +292,7 @@ fun ChatScreen(
             // Case 2: Render message conversation stream
             messages.forEach { msg ->
                 if (msg.isUser) {
-                    // User Message Bubble (Right Aligned, IDE Style)
+                    // User Message Bubble (Right Aligned, Clean Modern Messenger Style)
                     item(key = msg.id) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -277,18 +300,12 @@ fun ChatScreen(
                         ) {
                             Surface(
                                 shape = RoundedCornerShape(16.dp, 4.dp, 16.dp, 16.dp),
-                                color = SurfaceCard,
+                                color = IDEButtonBlue.copy(alpha = 0.22f),
                                 modifier = Modifier
-                                    .widthIn(max = 320.dp)
-                                    .border(1.dp, CardBorder, RoundedCornerShape(16.dp, 4.dp, 16.dp, 16.dp))
+                                    .widthIn(max = 300.dp)
+                                    .border(1.dp, IDEButtonBlue.copy(alpha = 0.5f), RoundedCornerShape(16.dp, 4.dp, 16.dp, 16.dp))
                             ) {
-                                Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text("👤", fontSize = 11.sp)
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Text("You", fontSize = 11.sp, color = PrimaryCyan, fontWeight = FontWeight.SemiBold)
-                                    }
-                                    Spacer(modifier = Modifier.height(4.dp))
+                                androidx.compose.foundation.layout.Box(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
                                     Text(
                                         text = msg.text,
                                         color = TextPrimary,
@@ -318,6 +335,33 @@ fun ChatScreen(
                     }
                 } else if (msg.task != null) {
                     val task = msg.task
+
+                    // Assistant explanation bubble if text is present
+                    if (msg.text.isNotBlank()) {
+                        item(key = "${msg.id}_reply") {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.Start
+                            ) {
+                                Surface(
+                                    shape = RoundedCornerShape(4.dp, 16.dp, 16.dp, 16.dp),
+                                    color = SurfaceCard,
+                                    modifier = Modifier
+                                        .widthIn(max = 340.dp)
+                                        .border(1.dp, CardBorder, RoundedCornerShape(4.dp, 16.dp, 16.dp, 16.dp))
+                                ) {
+                                    Column(modifier = Modifier.padding(14.dp)) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(text = "🤖 Continuum AI", color = PrimaryCyan, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                        }
+                                        Spacer(modifier = Modifier.height(6.dp))
+                                        Text(text = msg.text, color = TextPrimary, fontSize = 14.sp, lineHeight = 20.sp)
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     // Pill Badge: Proceeded with Implementation Plan
                     item(key = "${msg.id}_plan") {
                         Surface(
@@ -427,7 +471,9 @@ fun ChatScreen(
                                 onAcceptAll = {
                                     viewModel.approveSquashMerge(task.id) { }
                                 },
-                                onRejectAll = { viewModel.rejectTask(task.id) }
+                                onRejectAll = { viewModel.rejectTask(task.id) },
+                                verificationReport = task.verificationReport,
+                                isActionable = task.state == TaskState.AWAITING_MERGE_APPROVAL
                             )
                         }
                     }
@@ -463,26 +509,76 @@ fun ChatScreen(
                             }
                         }
                     }
+                } else {
+                    // Standard AI Assistant Chat Bubble (Direct Conversation / Notice)
+                    item(key = msg.id) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Start
+                        ) {
+                            Surface(
+                                shape = RoundedCornerShape(4.dp, 16.dp, 16.dp, 16.dp),
+                                color = SurfaceCard,
+                                modifier = Modifier
+                                    .widthIn(max = 340.dp)
+                                    .border(1.dp, CardBorder, RoundedCornerShape(4.dp, 16.dp, 16.dp, 16.dp))
+                            ) {
+                                Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text("🤖", fontSize = 11.sp)
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Continuum AI", fontSize = 11.sp, color = PrimaryCyan, fontWeight = FontWeight.SemiBold)
+                                    }
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = msg.text,
+                                        color = TextPrimary,
+                                        fontSize = 14.sp,
+                                        lineHeight = 20.sp
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
 
-            // Loading state indicator
+            // Prominent Loading state indicator with step progression
             if (uiState is ChatUiState.Loading) {
-                item {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
+                item(key = "loading_indicator") {
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = SurfaceCard,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 8.dp)
+                            .border(1.dp, PrimaryCyan.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
                     ) {
-                        CircularProgressIndicator(color = PrimaryCyan, strokeWidth = 2.dp, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "⚡ SkyBrain & Gemini가 코드를 분석 중입니다...",
-                            color = TextSecondary,
-                            fontSize = 12.sp,
-                            fontFamily = FontFamily.Monospace
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(14.dp)
+                        ) {
+                            CircularProgressIndicator(
+                                color = PrimaryCyan,
+                                strokeWidth = 2.5.dp,
+                                modifier = Modifier.size(22.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text(
+                                    text = "⚡ Continuum AI 분석 & 진단 진행 중...",
+                                    color = PrimaryCyan,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Spacer(modifier = Modifier.height(3.dp))
+                                Text(
+                                    text = "요청 분석 ➔ SkyBrain 5대 렌즈 평가 ➔ 응답 생성 중",
+                                    color = TextSecondary,
+                                    fontSize = 11.sp,
+                                    fontFamily = FontFamily.Monospace
+                                )
+                            }
+                        }
                     }
                 }
             }

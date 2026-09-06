@@ -46,6 +46,9 @@ interface ContinuumApiService {
 
     @POST("api/v1/projects/select")
     suspend fun selectProject(@Body request: ai.continuum.android.data.models.ProjectSelectRequest): Response<ai.continuum.android.data.models.ProjectInfo>
+
+    @POST("api/v1/chat")
+    suspend fun chatWithAgent(@Body request: ai.continuum.android.data.models.ChatRequest): Response<ai.continuum.android.data.models.ChatResponse>
 }
 
 object NetworkModule {

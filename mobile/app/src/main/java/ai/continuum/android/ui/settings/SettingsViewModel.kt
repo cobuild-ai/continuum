@@ -11,9 +11,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 data class SettingsUiState(
-    val serverHost: String = "10.0.2.2",
+    val serverHost: String = "192.168.1.117",
     val serverPort: Int = 8080,
-    val targetRepoPath: String = "/Users/smilelife/Projects/OSSProject",
+    val targetRepoPath: String = "/Users/smilelife/Projects/OSSProject/01-production/deartalk-ai",
     val baseBranch: String = "main",
     val cleanCodeEnabled: Boolean = true,
     val archEnabled: Boolean = true,
