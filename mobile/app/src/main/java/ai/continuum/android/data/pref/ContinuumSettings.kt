@@ -36,6 +36,9 @@ object ContinuumSettings {
     // Language
     private const val KEY_LANGUAGE_CODE = "key_language_code"
 
+    // Gemini AI Engine
+    private const val KEY_GEMINI_API_KEY = "key_gemini_api_key"
+
     private fun getPrefs(context: Context): SharedPreferences {
         return context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
     }
@@ -103,4 +106,8 @@ object ContinuumSettings {
     // Language
     fun getLanguageCode(context: Context): String = getPrefs(context).getString(KEY_LANGUAGE_CODE, "auto") ?: "auto"
     fun setLanguageCode(context: Context, code: String) = getPrefs(context).edit().putString(KEY_LANGUAGE_CODE, code).apply()
+
+    // Gemini Engine
+    fun getGeminiApiKey(context: Context): String = getPrefs(context).getString(KEY_GEMINI_API_KEY, "") ?: ""
+    fun setGeminiApiKey(context: Context, key: String) = getPrefs(context).edit().putString(KEY_GEMINI_API_KEY, key).apply()
 }

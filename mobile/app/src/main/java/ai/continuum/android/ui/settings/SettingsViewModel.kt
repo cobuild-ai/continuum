@@ -22,6 +22,7 @@ data class SettingsUiState(
     val aiConductEnabled: Boolean = true,
     val passThreshold: Int = 70,
     val vibrationEnabled: Boolean = true,
+    val geminiApiKey: String = "",
     val connectionStatus: String = "Not Tested",
     val isTestingConnection: Boolean = false
 )
@@ -42,10 +43,16 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             perfEnabled = ContinuumSettings.isLensEnabled(context, "performance"),
             aiConductEnabled = ContinuumSettings.isLensEnabled(context, "ai_conduct"),
             passThreshold = ContinuumSettings.getPassThresholdScore(context),
-            vibrationEnabled = ContinuumSettings.isVibrationEnabled(context)
+            vibrationEnabled = ContinuumSettings.isVibrationEnabled(context),
+            geminiApiKey = ContinuumSettings.getGeminiApiKey(context)
         )
     )
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
+
+    fun updateGeminiApiKey(key: String) {
+        ContinuumSettings.setGeminiApiKey(context, key)
+        _uiState.value = _uiState.value.copy(geminiApiKey = key)
+    }
 
     fun updateServerConfig(host: String, port: Int) {
         ContinuumSettings.setServerHost(context, host)

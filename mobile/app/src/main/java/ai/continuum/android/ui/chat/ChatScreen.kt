@@ -202,33 +202,6 @@ fun ChatScreen(
                                         tint = TextMuted,
                                         modifier = Modifier.size(18.dp)
                                     )
-                                    Spacer(modifier = Modifier.width(8.dp))
-
-                                    // Model Switcher Pill
-                                    Surface(
-                                        shape = RoundedCornerShape(6.dp),
-                                        color = IDETagBg,
-                                        modifier = Modifier.clip(RoundedCornerShape(6.dp))
-                                    ) {
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                        ) {
-                                            Text(
-                                                text = "⚡ SkyBrain (Qwen 3.8) ➔ Lead Gemini",
-                                                color = TextSecondary,
-                                                fontSize = 11.sp,
-                                                fontWeight = FontWeight.Medium
-                                            )
-                                            Spacer(modifier = Modifier.width(4.dp))
-                                            Icon(
-                                                imageVector = Icons.Default.KeyboardArrowDown,
-                                                contentDescription = null,
-                                                tint = TextSecondary,
-                                                modifier = Modifier.size(12.dp)
-                                            )
-                                        }
-                                    }
                                 }
 
                                 // Send Button with loading state
