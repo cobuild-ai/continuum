@@ -37,11 +37,20 @@ interface ContinuumApiService {
 
     @GET("api/v1/tasks/{taskId}/diff")
     suspend fun getTaskDiff(@Path("taskId") taskId: String): Response<DiffSummary>
+
+    @GET("api/v1/projects")
+    suspend fun listProjects(): Response<List<ai.continuum.android.data.models.ProjectInfo>>
+
+    @GET("api/v1/projects/active")
+    suspend fun getActiveProject(): Response<ai.continuum.android.data.models.ProjectInfo>
+
+    @POST("api/v1/projects/select")
+    suspend fun selectProject(@Body request: ai.continuum.android.data.models.ProjectSelectRequest): Response<ai.continuum.android.data.models.ProjectInfo>
 }
 
 object NetworkModule {
-    // Default host address for Android emulator (10.0.2.2 maps to host 127.0.0.1)
-    private var baseUrl: String = "http://10.0.2.2:8080/"
+    // Default host address: Mac local Wi-Fi IP for direct on-device testing
+    private var baseUrl: String = "http://192.168.1.117:8080/"
 
     fun setBaseUrl(url: String) {
         baseUrl = if (url.endsWith("/")) url else "$url/"

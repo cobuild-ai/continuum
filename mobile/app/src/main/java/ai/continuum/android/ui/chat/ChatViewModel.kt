@@ -3,6 +3,7 @@ package ai.continuum.android.ui.chat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ai.continuum.android.data.models.DiffSummary
+import ai.continuum.android.data.models.ProjectInfo
 import ai.continuum.android.data.models.TaskResponse
 import ai.continuum.android.data.models.TaskState
 import ai.continuum.android.data.repository.TaskRepository
@@ -25,8 +26,26 @@ class ChatViewModel(
     private val _uiState = MutableStateFlow<ChatUiState>(ChatUiState.Idle)
     val uiState: StateFlow<ChatUiState> = _uiState.asStateFlow()
 
+    val projects: StateFlow<List<ProjectInfo>> = repository.projects
+    val activeProject: StateFlow<ProjectInfo?> = repository.activeProject
     val activeTask: StateFlow<TaskResponse?> = repository.activeTask
     val diffSummary: StateFlow<DiffSummary?> = repository.diffSummary
+
+    init {
+        loadProjects()
+    }
+
+    fun loadProjects() {
+        viewModelScope.launch {
+            repository.loadProjects()
+        }
+    }
+
+    fun selectProject(project: ProjectInfo) {
+        viewModelScope.launch {
+            repository.selectProject(project)
+        }
+    }
 
     fun sendPrompt(prompt: String, targetRepo: String? = null) {
         if (prompt.isBlank()) return

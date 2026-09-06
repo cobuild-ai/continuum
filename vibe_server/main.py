@@ -4,7 +4,8 @@ import json
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict
+import subprocess
+from typing import Dict, List, Optional
 
 import typer
 import uvicorn
@@ -18,6 +19,8 @@ from vibe_server.core.diagnostics import CheckStatus, PreflightAssessor
 from vibe_server.core.models import (
     ApprovalRequest,
     DiffSummary,
+    ProjectInfo,
+    ProjectSelectRequest,
     TaskCreateRequest,
     TaskResponse,
 )
@@ -69,6 +72,105 @@ def diagnostics_check():
     }
 
 
+active_project_path: str = str(settings.default_workspace_root / "01-production" / "deartalk-ai")
+
+
+def discover_projects(workspace_root: Path) -> List[ProjectInfo]:
+    """Scan and return all production projects under workspace."""
+    projects: List[ProjectInfo] = []
+    prod_dir = workspace_root / "01-production"
+    if not prod_dir.exists():
+        return projects
+
+    for item in sorted(prod_dir.iterdir()):
+        if item.is_dir() and not item.name.startswith((".", "__")):
+            is_git = (item / ".git").exists()
+            branch = "main"
+            is_clean = True
+            if is_git:
+                try:
+                    res = subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=item, capture_output=True, text=True)
+                    if res.returncode == 0 and res.stdout.strip():
+                        branch = res.stdout.strip()
+                    status_res = subprocess.run(["git", "status", "--porcelain"], cwd=item, capture_output=True, text=True)
+                    if status_res.returncode == 0:
+                        is_clean = len(status_res.stdout.strip()) == 0
+                except Exception:
+                    pass
+
+            desc = "Production Managed Project"
+            if item.name == "deartalk-ai":
+                desc = "On-Device SLM AI Chat Application (Android)"
+            elif item.name == "skybrain":
+                desc = "Local SLM Serving Daemon & MCP Server"
+            elif item.name == "continuum":
+                desc = "Mobile Vibe Server & Android Companion"
+            elif item.name == "skynexus":
+                desc = "Orchestrator Gateway & Pipeline Service"
+            elif item.name == "myskynet":
+                desc = "Cloud Coordination & Multi-Node Cluster"
+
+            projects.append(ProjectInfo(
+                name=item.name,
+                path=str(item.resolve()),
+                current_branch=branch,
+                is_git=is_git,
+                is_clean=is_clean,
+                description=desc
+            ))
+    return projects
+
+
+@app.get("/api/v1/projects", response_model=List[ProjectInfo], tags=["Projects"])
+def list_projects():
+    """List discovered projects available for management."""
+    return discover_projects(settings.default_workspace_root)
+
+
+@app.get("/api/v1/projects/active", response_model=ProjectInfo, tags=["Projects"])
+def get_active_project():
+    """Get the currently opened/active target managed project."""
+    global active_project_path
+    p = Path(active_project_path)
+    if not p.exists():
+        active_project_path = str(settings.default_workspace_root / "01-production" / "deartalk-ai")
+        p = Path(active_project_path)
+
+    is_git = (p / ".git").exists()
+    branch = "main"
+    is_clean = True
+    if is_git:
+        try:
+            res = subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=p, capture_output=True, text=True)
+            if res.returncode == 0 and res.stdout.strip():
+                branch = res.stdout.strip()
+            status_res = subprocess.run(["git", "status", "--porcelain"], cwd=p, capture_output=True, text=True)
+            if status_res.returncode == 0:
+                is_clean = len(status_res.stdout.strip()) == 0
+        except Exception:
+            pass
+
+    return ProjectInfo(
+        name=p.name,
+        path=str(p.resolve()),
+        current_branch=branch,
+        is_git=is_git,
+        is_clean=is_clean,
+        description="Active Target Project"
+    )
+
+
+@app.post("/api/v1/projects/select", response_model=ProjectInfo, tags=["Projects"])
+def select_project(req: ProjectSelectRequest):
+    """Set the active managed project path."""
+    global active_project_path
+    p = Path(req.path)
+    if not p.exists() or not p.is_dir():
+        raise HTTPException(status_code=400, detail=f"Invalid project path: {req.path}")
+    active_project_path = str(p.resolve())
+    return get_active_project()
+
+
 @app.post("/api/v1/tasks", response_model=TaskResponse, status_code=status.HTTP_201_CREATED, tags=["Tasks"])
 def create_task(req: TaskCreateRequest):
     task_id = str(uuid.uuid4())[:8]
@@ -82,6 +184,7 @@ def create_task(req: TaskCreateRequest):
     sm.transition_to(TaskState.AWAITING_DESIGN_APPROVAL)
     
     branch_name = f"{settings.ai_branch_prefix}{task_id}"
+    target_repo = req.target_repo_path or active_project_path
     task_data = {
         "id": task_id,
         "prompt": req.prompt,
@@ -93,7 +196,7 @@ def create_task(req: TaskCreateRequest):
         "error_message": None,
         "created_at": datetime.now(timezone.utc),
         "updated_at": datetime.now(timezone.utc),
-        "target_repo_path": req.target_repo_path or str(settings.default_workspace_root),
+        "target_repo_path": target_repo,
         "base_branch": req.base_branch
     }
     tasks_db[task_id] = task_data
@@ -161,30 +264,11 @@ def approve_task_stage(task_id: str, req: ApprovalRequest):
             git_mgr = GitWorkspaceManager(target_path, branch_prefix=settings.ai_branch_prefix)
             try:
                 git_mgr.create_task_branch(task_id, base_branch=t["base_branch"])
-                diff = git_mgr.get_diff(task_id, base_branch=t["base_branch"])
-                if diff.total_files_changed > 0:
-                    t["diff_summary"] = diff
-                else:
-                    t["diff_summary"] = DiffSummary(
-                        total_files_changed=1,
-                        total_additions=12,
-                        total_deletions=2,
-                        files=[]
-                    )
+                t["diff_summary"] = git_mgr.get_diff(task_id, base_branch=t["base_branch"])
             except Exception:
-                t["diff_summary"] = DiffSummary(
-                    total_files_changed=1,
-                    total_additions=12,
-                    total_deletions=2,
-                    files=[]
-                )
+                t["diff_summary"] = DiffSummary(total_files_changed=0, total_additions=0, total_deletions=0, files=[])
         else:
-            t["diff_summary"] = DiffSummary(
-                total_files_changed=1,
-                total_additions=12,
-                total_deletions=2,
-                files=[]
-            )
+            t["diff_summary"] = DiffSummary(total_files_changed=0, total_additions=0, total_deletions=0, files=[])
 
         sm.transition_to(TaskState.DIFF_READY)
         sm.transition_to(TaskState.AWAITING_MERGE_APPROVAL)

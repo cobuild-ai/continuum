@@ -50,3 +50,17 @@ data class TaskResponse(
     @SerializedName("created_at") val createdAt: String? = null,
     @SerializedName("updated_at") val updatedAt: String? = null
 )
+
+data class ProjectInfo(
+    val name: String,
+    val path: String,
+    @SerializedName("current_branch") val currentBranch: String = "main",
+    @SerializedName("is_git") val isGit: Boolean = true,
+    @SerializedName("is_clean") val isClean: Boolean = true,
+    val description: String = ""
+)
+
+data class ProjectSelectRequest(
+    val path: String
+)
+

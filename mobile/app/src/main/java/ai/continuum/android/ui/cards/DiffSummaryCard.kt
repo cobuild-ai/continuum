@@ -31,18 +31,7 @@ fun DiffSummaryCard(
     onRejectAll: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // If files list is empty in summary, create realistic sample rows based on totals
-    val displayFiles = if (diffSummary.files.isNotEmpty()) {
-        diffSummary.files
-    } else {
-        listOf(
-            FileDiff("vibe_server/main.py", additions = 49, deletions = 6),
-            FileDiff("mobile/.../ChatScreen.kt", additions = 28, deletions = 4),
-            FileDiff("mobile/.../DiffSummaryCard.kt", additions = 34, deletions = 2),
-            FileDiff("tests/test_e2e_workflow.py", additions = 76, deletions = 0),
-            FileDiff(".gitignore", additions = 29, deletions = 0)
-        )
-    }
+    val displayFiles = diffSummary.files
 
     Card(
         shape = RoundedCornerShape(12.dp),
@@ -53,15 +42,31 @@ fun DiffSummaryCard(
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             // Files List
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 6.dp)
-            ) {
-                displayFiles.forEach { file ->
-                    FileRowItem(
-                        file = file,
-                        onClick = onInspectDiff
+            if (displayFiles.isNotEmpty()) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 6.dp)
+                ) {
+                    displayFiles.forEach { file ->
+                        FileRowItem(
+                            file = file,
+                            onClick = onInspectDiff
+                        )
+                    }
+                }
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 16.dp, horizontal = 12.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Working tree clean (0 files changed)",
+                        color = TextSecondary,
+                        fontSize = 12.sp,
+                        fontFamily = FontFamily.Monospace
                     )
                 }
             }
@@ -75,62 +80,69 @@ fun DiffSummaryCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 10.dp)
+                    .padding(horizontal = 10.dp, vertical = 8.dp)
             ) {
                 // File Count Indicator
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.clickable { onInspectDiff() }
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { onInspectDiff() }
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = null,
                         tint = TextSecondary,
-                        modifier = Modifier.size(14.dp)
+                        modifier = Modifier.size(13.dp)
                     )
-                    Spacer(modifier = Modifier.width(6.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
                     Icon(
                         imageVector = Icons.Default.Description,
                         contentDescription = null,
                         tint = TextSecondary,
-                        modifier = Modifier.size(15.dp)
+                        modifier = Modifier.size(14.dp)
                     )
-                    Spacer(modifier = Modifier.width(6.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
                     val count = if (diffSummary.totalFilesChanged > 0) diffSummary.totalFilesChanged else displayFiles.size
                     Text(
-                        text = "$count Files With Changes",
+                        text = "$count Files Changed",
                         color = TextPrimary,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
 
-                // Action Buttons: Reject all / Accept all
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                // Action Buttons: Reject / Accept all
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.End
+                ) {
                     TextButton(
                         onClick = onRejectAll,
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
                     ) {
                         Text(
-                            text = "Reject all",
+                            text = "Reject",
                             color = TextSecondary,
-                            fontSize = 13.sp
+                            fontSize = 12.sp
                         )
                     }
 
-                    Spacer(modifier = Modifier.width(6.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
 
                     Button(
                         onClick = onAcceptAll,
                         colors = ButtonDefaults.buttonColors(containerColor = IDEButtonBlue),
                         shape = RoundedCornerShape(8.dp),
-                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
-                        modifier = Modifier.height(34.dp)
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                        modifier = Modifier.height(32.dp)
                     ) {
                         Text(
                             text = "Accept all",
                             color = TextPrimary,
-                            fontSize = 13.sp,
+                            fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold
                         )
                     }

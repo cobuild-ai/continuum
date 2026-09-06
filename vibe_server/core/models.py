@@ -104,3 +104,19 @@ class TaskResponse(BaseModel):
     error_message: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class ProjectInfo(BaseModel):
+    """Discovered or active target managed project info."""
+    name: str
+    path: str
+    current_branch: str = "main"
+    is_git: bool = True
+    is_clean: bool = True
+    description: str = ""
+
+
+class ProjectSelectRequest(BaseModel):
+    """Request to set the active managed project."""
+    path: str
+
