@@ -1,28 +1,28 @@
-# 5대 렌즈 종합 코드 품질 및 보안 진단 프레임워크
+# 코드 품질 및 보안 5대 렌즈 종합 진단 프레임워크
 
-본 프레임워크는 코드의 안정성, 보안성, 유지보수성, 성능, 그리고 비즈니스 로직의 무결성을 평가하기 위한 5대 핵심 렌즈를 정의합니다.
+본 진단은 소프트웨어의 견고성과 보안성을 보장하기 위해 다음 5가지 핵심 렌즈를 통해 수행됩니다.
 
-## 1. 보안성 렌즈 (Security)
-- OWASP Top 10 취약점 점검 (SQLi, XSS, CSRF 등)
-- 민감 정보 하드코딩 여부 확인
-- 의존성 라이브러리 CVE 취약점 스캔
+## 1. 정적 분석 (Static Analysis)
+- **목표:** 소스 코드 내 잠재적 취약점 및 코드 스멜 탐지
+- **도구:** SonarQube, ESLint, Bandit, Checkstyle
+- **체크리스트:** 하드코딩된 자격 증명, SQL 인젝션 패턴, 미사용 변수, 복잡도(Cyclomatic Complexity)
 
-## 2. 코드 품질 렌즈 (Code Quality)
-- 정적 분석(Static Analysis)을 통한 코드 스멜(Code Smell) 탐지
-- 순환 복잡도(Cyclomatic Complexity) 측정
-- 코딩 컨벤션 준수 여부 (PEP8, ESLint 등)
+## 2. 의존성 보안 (Dependency Security)
+- **목표:** 외부 라이브러리의 알려진 취약점(CVE) 관리
+- **도구:** Snyk, OWASP Dependency-Check
+- **체크리스트:** 취약한 버전의 패키지 사용 여부, 라이선스 컴플라이언스
 
-## 3. 성능 렌즈 (Performance)
-- 시간 복잡도 및 공간 복잡도 분석
-- 비효율적인 루프 및 리소스 누수(Memory Leak) 탐지
-- DB 쿼리 최적화 및 N+1 문제 진단
+## 3. 비즈니스 로직 및 아키텍처 (Logic & Architecture)
+- **목표:** 설계 결함 및 비즈니스 로직 우회 방지
+- **방법:** Threat Modeling (STRIDE), 코드 리뷰
+- **체크리스트:** 권한 부여(Authorization) 누락, 입력값 검증 로직, 데이터 무결성
 
-## 4. 유지보수성 렌즈 (Maintainability)
-- 모듈 간 결합도(Coupling) 및 응집도(Cohesion) 평가
-- 단위 테스트 커버리지(Unit Test Coverage) 측정
-- 문서화(Docstring) 및 주석의 적절성
+## 4. 런타임 및 인프라 보안 (Runtime & Infrastructure)
+- **목표:** 실행 환경에서의 보안 설정 및 리소스 보호
+- **도구:** Docker Bench, Cloud Custodian
+- **체크리스트:** 최소 권한 원칙(Least Privilege), 민감 정보 환경 변수 관리, 네트워크 격리
 
-## 5. 비즈니스 로직 렌즈 (Business Logic)
-- 예외 처리(Exception Handling)의 견고성
-- 비즈니스 규칙의 일관성 및 경계값 테스트
-- 로깅 및 모니터링 가시성 확보
+## 5. 코드 가독성 및 유지보수성 (Maintainability)
+- **목표:** 기술 부채 최소화 및 협업 효율성 증대
+- **방법:** Clean Code 원칙, 자동화된 테스트 커버리지
+- **체크리스트:** 함수 단위의 단일 책임 원칙(SRP), 테스트 코드 커버리지 80% 이상 유지
