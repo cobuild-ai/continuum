@@ -64,3 +64,13 @@ data class ProjectSelectRequest(
     val path: String
 )
 
+data class ChatMessage(
+    val id: String = java.util.UUID.randomUUID().toString(),
+    val text: String,
+    val isUser: Boolean,
+    val timestamp: Long = System.currentTimeMillis(),
+    val task: TaskResponse? = null,
+    val isError: Boolean = false,
+    val errorMessage: String? = null
+)
+

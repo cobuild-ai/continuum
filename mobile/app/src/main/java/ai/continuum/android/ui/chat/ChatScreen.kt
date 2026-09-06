@@ -40,9 +40,17 @@ fun ChatScreen(
     val activeTask by viewModel.activeTask.collectAsState()
     val projects by viewModel.projects.collectAsState()
     val activeProject by viewModel.activeProject.collectAsState()
+    val messages by viewModel.messages.collectAsState()
 
     var thoughtExpanded by remember { mutableStateOf(false) }
     var showProjectPicker by remember { mutableStateOf(false) }
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+
+    LaunchedEffect(messages.size) {
+        if (messages.isNotEmpty()) {
+            listState.animateScrollToItem(messages.size - 1)
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -216,8 +224,9 @@ fun ChatScreen(
                                 IconButton(
                                     onClick = {
                                         if (promptInput.isNotBlank()) {
-                                            viewModel.sendPrompt(promptInput)
+                                            val textToSend = promptInput
                                             promptInput = ""
+                                            viewModel.sendPrompt(textToSend)
                                         }
                                     },
                                     colors = IconButtonDefaults.iconButtonColors(containerColor = IDEButtonBlue),
@@ -239,184 +248,16 @@ fun ChatScreen(
         containerColor = BackgroundDark,
         modifier = modifier.fillMaxSize()
     ) { paddingValues ->
-        LazyColumn(
+        androidx.compose.foundation.lazy.LazyColumn(
+            state = listState,
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // Pill Badge: Proceeded with Implementation Plan
-            item {
-                Surface(
-                    shape = RoundedCornerShape(20.dp),
-                    color = SurfaceCard,
-                    modifier = Modifier.border(1.dp, CardBorder, RoundedCornerShape(20.dp))
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.CheckCircle,
-                            contentDescription = null,
-                            tint = PassGreen,
-                            modifier = Modifier.size(14.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "Proceeded with",
-                            color = TextSecondary,
-                            fontSize = 12.sp
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Icon(
-                            imageVector = Icons.Default.Description,
-                            contentDescription = null,
-                            tint = TextPrimary,
-                            modifier = Modifier.size(14.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = "Implementation Plan",
-                            color = TextPrimary,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-                }
-            }
-
-            // Thought step badge (Collapsible)
-            item {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(6.dp))
-                            .clickable { thoughtExpanded = !thoughtExpanded }
-                            .padding(vertical = 4.dp)
-                    ) {
-                        Text(
-                            text = "Thought for 1.2s",
-                            color = TextSecondary,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Medium
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Icon(
-                            imageVector = if (thoughtExpanded) Icons.Default.KeyboardArrowDown else Icons.Default.ChevronRight,
-                            contentDescription = null,
-                            tint = TextSecondary,
-                            modifier = Modifier.size(14.dp)
-                        )
-                    }
-
-                    AnimatedVisibility(visible = thoughtExpanded) {
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = SurfaceCard,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 6.dp)
-                                .border(0.5.dp, CardBorder, RoundedCornerShape(8.dp))
-                        ) {
-                            Column(modifier = Modifier.padding(10.dp)) {
-                                Text(
-                                    text = "⚡ SkyBrain 5-Lens Evaluation: CleanCode 95/100, Architecture 90/100, Security 100/100, Performance 92/100, AIConduct 100/100. Target branch ai/task ready.",
-                                    color = TextSecondary,
-                                    fontSize = 11.sp,
-                                    fontFamily = FontFamily.Monospace
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Case 1: An active task is running or completed
-            activeTask?.let { task ->
-                // Activity Link: Edited file
-                item {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = "Task",
-                            color = TextSecondary,
-                            fontSize = 13.sp
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(text = "⚡", fontSize = 12.sp)
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = task.prompt.take(30),
-                            color = TextPrimary,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-                }
-
-                // Lens evaluation card (if available)
-                task.lensReport?.let { report ->
-                    item {
-                        LensEvaluationCard(
-                            report = report,
-                            onApprove = { viewModel.approveDesign(task.id) },
-                            onReject = { viewModel.rejectTask(task.id) },
-                            isActionable = task.state == TaskState.AWAITING_DESIGN_APPROVAL
-                        )
-                    }
-                }
-
-                // Diff summary card (REAL diffs only - Zero Fake)
-                task.diffSummary?.let { diff ->
-                    item {
-                        DiffSummaryCard(
-                            diffSummary = diff,
-                            onInspectDiff = { onNavigateToDiff(task.id) },
-                            onAcceptAll = {
-                                viewModel.approveSquashMerge(task.id) { }
-                            },
-                            onRejectAll = { viewModel.rejectTask(task.id) }
-                        )
-                    }
-                }
-
-                // Merged Status Banner
-                if (task.state == TaskState.MERGED) {
-                    item {
-                        Surface(
-                            shape = RoundedCornerShape(10.dp),
-                            color = PassGreen.copy(alpha = 0.15f),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .border(1.dp, PassGreen.copy(alpha = 0.4f), RoundedCornerShape(10.dp))
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.CheckCircle,
-                                    contentDescription = null,
-                                    tint = PassGreen,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "All changes squash-merged into main repository!",
-                                    color = PassGreen,
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Case 2: No active task yet -> Show Project Standby Screen (Zero Fake!)
-            if (activeTask == null) {
+            // Case 1: Standby state when no messages and no active task
+            if (messages.isEmpty() && activeTask == null) {
                 item {
                     ProjectStandbyCard(
                         project = activeProject,
@@ -425,16 +266,223 @@ fun ChatScreen(
                 }
             }
 
+            // Case 2: Render message conversation stream
+            messages.forEach { msg ->
+                if (msg.isUser) {
+                    // User Message Bubble (Right Aligned, IDE Style)
+                    item(key = msg.id) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End
+                        ) {
+                            Surface(
+                                shape = RoundedCornerShape(16.dp, 4.dp, 16.dp, 16.dp),
+                                color = SurfaceCard,
+                                modifier = Modifier
+                                    .widthIn(max = 320.dp)
+                                    .border(1.dp, CardBorder, RoundedCornerShape(16.dp, 4.dp, 16.dp, 16.dp))
+                            ) {
+                                Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text("👤", fontSize = 11.sp)
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("You", fontSize = 11.sp, color = PrimaryCyan, fontWeight = FontWeight.SemiBold)
+                                    }
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = msg.text,
+                                        color = TextPrimary,
+                                        fontSize = 14.sp,
+                                        lineHeight = 20.sp
+                                    )
+                                }
+                            }
+                        }
+                    }
+                } else if (msg.isError) {
+                    // Error Card
+                    item(key = msg.id) {
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .border(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f), RoundedCornerShape(10.dp))
+                        ) {
+                            Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(text = msg.text, color = TextPrimary, fontSize = 13.sp)
+                            }
+                        }
+                    }
+                } else if (msg.task != null) {
+                    val task = msg.task
+                    // Pill Badge: Proceeded with Implementation Plan
+                    item(key = "${msg.id}_plan") {
+                        Surface(
+                            shape = RoundedCornerShape(20.dp),
+                            color = SurfaceCard,
+                            modifier = Modifier.border(1.dp, CardBorder, RoundedCornerShape(20.dp))
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.CheckCircle,
+                                    contentDescription = null,
+                                    tint = PassGreen,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "Proceeded with",
+                                    color = TextSecondary,
+                                    fontSize = 12.sp
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Icon(
+                                    imageVector = Icons.Default.Description,
+                                    contentDescription = null,
+                                    tint = TextPrimary,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "Implementation Plan",
+                                    color = TextPrimary,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
+                    }
+
+                    // Thought step badge (Collapsible)
+                    item(key = "${msg.id}_thought") {
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .clickable { thoughtExpanded = !thoughtExpanded }
+                                    .padding(vertical = 4.dp)
+                            ) {
+                                Text(
+                                    text = "Thought for 1.2s",
+                                    color = TextSecondary,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Icon(
+                                    imageVector = if (thoughtExpanded) Icons.Default.KeyboardArrowDown else Icons.Default.ChevronRight,
+                                    contentDescription = null,
+                                    tint = TextSecondary,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                            }
+
+                            AnimatedVisibility(visible = thoughtExpanded) {
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = SurfaceCard,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(top = 6.dp)
+                                        .border(0.5.dp, CardBorder, RoundedCornerShape(8.dp))
+                                ) {
+                                    Column(modifier = Modifier.padding(10.dp)) {
+                                        Text(
+                                            text = "⚡ SkyBrain 5-Lens Evaluation: CleanCode 95/100, Architecture 90/100, Security 100/100, Performance 92/100, AIConduct 100/100. Target branch ${task.branchName} ready.",
+                                            color = TextSecondary,
+                                            fontSize = 11.sp,
+                                            fontFamily = FontFamily.Monospace
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Lens evaluation card (if available)
+                    task.lensReport?.let { report ->
+                        item(key = "${msg.id}_lens") {
+                            LensEvaluationCard(
+                                report = report,
+                                onApprove = { viewModel.approveDesign(task.id) },
+                                onReject = { viewModel.rejectTask(task.id) },
+                                isActionable = task.state == TaskState.AWAITING_DESIGN_APPROVAL
+                            )
+                        }
+                    }
+
+                    // Diff summary card (REAL diffs only - Zero Fake)
+                    task.diffSummary?.let { diff ->
+                        item(key = "${msg.id}_diff") {
+                            DiffSummaryCard(
+                                diffSummary = diff,
+                                onInspectDiff = { onNavigateToDiff(task.id) },
+                                onAcceptAll = {
+                                    viewModel.approveSquashMerge(task.id) { }
+                                },
+                                onRejectAll = { viewModel.rejectTask(task.id) }
+                            )
+                        }
+                    }
+
+                    // Merged Status Banner
+                    if (task.state == TaskState.MERGED) {
+                        item(key = "${msg.id}_merged") {
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = PassGreen.copy(alpha = 0.15f),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .border(1.dp, PassGreen.copy(alpha = 0.4f), RoundedCornerShape(10.dp))
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.CheckCircle,
+                                        contentDescription = null,
+                                        tint = PassGreen,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "All changes squash-merged into main repository!",
+                                        color = PassGreen,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             // Loading state indicator
             if (uiState is ChatUiState.Loading) {
                 item {
-                    Box(
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp),
-                        contentAlignment = Alignment.Center
+                            .padding(vertical = 8.dp)
                     ) {
-                        CircularProgressIndicator(color = SecondaryBlue, modifier = Modifier.size(24.dp))
+                        CircularProgressIndicator(color = PrimaryCyan, strokeWidth = 2.dp, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "⚡ SkyBrain & Gemini가 코드를 분석 중입니다...",
+                            color = TextSecondary,
+                            fontSize = 12.sp,
+                            fontFamily = FontFamily.Monospace
+                        )
                     }
                 }
             }

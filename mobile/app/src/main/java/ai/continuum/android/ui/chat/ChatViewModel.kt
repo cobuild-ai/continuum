@@ -26,6 +26,9 @@ class ChatViewModel(
     private val _uiState = MutableStateFlow<ChatUiState>(ChatUiState.Idle)
     val uiState: StateFlow<ChatUiState> = _uiState.asStateFlow()
 
+    private val _messages = MutableStateFlow<List<ai.continuum.android.data.models.ChatMessage>>(emptyList())
+    val messages: StateFlow<List<ai.continuum.android.data.models.ChatMessage>> = _messages.asStateFlow()
+
     val projects: StateFlow<List<ProjectInfo>> = repository.projects
     val activeProject: StateFlow<ProjectInfo?> = repository.activeProject
     val activeTask: StateFlow<TaskResponse?> = repository.activeTask
@@ -43,20 +46,40 @@ class ChatViewModel(
 
     fun selectProject(project: ProjectInfo) {
         viewModelScope.launch {
+            _messages.value = emptyList()
             repository.selectProject(project)
         }
     }
 
     fun sendPrompt(prompt: String, targetRepo: String? = null) {
         if (prompt.isBlank()) return
+        val userMsg = ai.continuum.android.data.models.ChatMessage(
+            text = prompt,
+            isUser = true
+        )
+        _messages.value = _messages.value + userMsg
+
         viewModelScope.launch {
             _uiState.value = ChatUiState.Loading
             repository.createTask(prompt, targetRepo)
                 .onSuccess { task ->
                     _uiState.value = ChatUiState.Success(task)
+                    val agentMsg = ai.continuum.android.data.models.ChatMessage(
+                        text = "Task [${task.id}] 시작: ${task.prompt}",
+                        isUser = false,
+                        task = task
+                    )
+                    _messages.value = _messages.value + agentMsg
                 }
                 .onFailure { err ->
                     _uiState.value = ChatUiState.Error(err.message ?: "Unknown error")
+                    val errReport = ai.continuum.android.data.models.ChatMessage(
+                        text = "⚠️ 통신 오류: ${err.message ?: "서버 응답 없음"}",
+                        isUser = false,
+                        isError = true,
+                        errorMessage = err.message
+                    )
+                    _messages.value = _messages.value + errReport
                 }
         }
     }
