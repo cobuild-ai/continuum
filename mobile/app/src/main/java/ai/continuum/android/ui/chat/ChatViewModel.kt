@@ -80,9 +80,10 @@ class ChatViewModel(
         }
     }
 
-    fun refreshActiveTask(taskId: String) {
+    fun refreshActiveTask(taskId: String? = null) {
+        val targetId = taskId ?: activeTask.value?.id ?: return
         viewModelScope.launch {
-            repository.refreshTask(taskId)
+            repository.refreshTask(targetId)
         }
     }
 }
