@@ -1,0 +1,23 @@
+<resources>
+    <string name="app_name">Continuum</string>
+    <string name="title_vibe_orchestrator">Continuum Vibe Orchestrator</string>
+    <string name="prompt_placeholder">Tell Continuum what to build or refactor...</string>
+    <string name="btn_send">Send</string>
+    <string name="btn_approve_design">Approve Design &amp; Run Sandbox</string>
+    <string name="btn_reject">Reject</string>
+    <string name="btn_squash_merge">Squash Merge &amp; Deploy</string>
+    <string name="tab_chat">Vibe Chat</string>
+    <string name="tab_diff">Diff Inspector</string>
+    <string name="lens_clean_code">Clean Code</string>
+    <string name="lens_architecture">Architecture</string>
+    <string name="lens_security">Security</string>
+    <string name="lens_performance">Performance</string>
+    <string name="lens_ai_conduct">AI Conduct</string>
+    <string name="score_label">Overall Score: %1$s/100</string>
+    <string name="diff_summary_title">Sandbox Changes</string>
+    <string name="diff_stat_format">%1$d files changed (+%2$d, -%3$d)</string>
+    <string name="status_idle">Idle</string>
+    <string name="status_analyzing">Analyzing with 5 Lenses...</string>
+    <string name="status_executing">Running in Docker Sandbox...</string>
+    <string name="status_merged">Squash Merged Successfully!</string>
+</resources>

@@ -1,0 +1,23 @@
+<resources>
+    <string name="app_name">Continuum</string>
+    <string name="title_vibe_orchestrator">Orkestrator Vibe Continuum</string>
+    <string name="prompt_placeholder">Beri instruksi fitur atau refactoring...</string>
+    <string name="btn_send">Kirim</string>
+    <string name="btn_approve_design">Setujui Desain &amp; Jalankan Sandbox</string>
+    <string name="btn_reject">Tolak</string>
+    <string name="btn_squash_merge">Setujui Squash Merge Satu Sentuhan</string>
+    <string name="tab_chat">Obrolan Vibe</string>
+    <string name="tab_diff">Pemeriksa Diff</string>
+    <string name="lens_clean_code">Clean Code</string>
+    <string name="lens_architecture">Arsitektur</string>
+    <string name="lens_security">Keamanan</string>
+    <string name="lens_performance">Kinerja</string>
+    <string name="lens_ai_conduct">AI Conduct</string>
+    <string name="score_label">Skor 5-Lensa: %1$s/100</string>
+    <string name="diff_summary_title">Perubahan Sandbox</string>
+    <string name="diff_stat_format">%1$d berkas diubah (+%2$d, -%3$d)</string>
+    <string name="status_idle">Siaga</string>
+    <string name="status_analyzing">Menganalisis dengan 5 Lensa...</string>
+    <string name="status_executing">Menjalankan di Sandbox Docker...</string>
+    <string name="status_merged">Squash Merge Berhasil!</string>
+</resources>

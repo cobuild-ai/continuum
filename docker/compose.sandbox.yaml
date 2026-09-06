@@ -1,0 +1,15 @@
+version: "3.8"
+
+services:
+  sandbox:
+    build:
+      context: .
+      dockerfile: Dockerfile.sandbox
+    image: continuum-sandbox:latest
+    container_name: continuum_sandbox_runner
+    volumes:
+      - ${HOST_WORKSPACE_PATH:-..}:/workspace
+    working_dir: /workspace
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: ["sleep", "infinity"]

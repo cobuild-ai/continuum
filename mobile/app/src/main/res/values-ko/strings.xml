@@ -1,0 +1,23 @@
+<resources>
+    <string name="app_name">컨티뉴엄</string>
+    <string name="title_vibe_orchestrator">컨티뉴엄 바이브 오케스트레이터</string>
+    <string name="prompt_placeholder">구현하거나 리팩토링할 작업을 지시하세요...</string>
+    <string name="btn_send">전송</string>
+    <string name="btn_approve_design">설계안 승인 및 샌드박스 실행</string>
+    <string name="btn_reject">거절</string>
+    <string name="btn_squash_merge">원터치 Squash Merge 승인</string>
+    <string name="tab_chat">바이브 채팅</string>
+    <string name="tab_diff">Diff 검사기</string>
+    <string name="lens_clean_code">클린 코드</string>
+    <string name="lens_architecture">클린 아키텍처</string>
+    <string name="lens_security">보안</string>
+    <string name="lens_performance">성능</string>
+    <string name="lens_ai_conduct">AI 수행규범</string>
+    <string name="score_label">5대 렌즈 종합 점수: %1$s/100점</string>
+    <string name="diff_summary_title">샌드박스 변경 내역</string>
+    <string name="diff_stat_format">%1$d개 파일 변경 (+%2$d, -%3$d)</string>
+    <string name="status_idle">대기 중</string>
+    <string name="status_analyzing">SkyBrain 5대 렌즈 분석 중...</string>
+    <string name="status_executing">Docker 샌드박스 격리 실행 중...</string>
+    <string name="status_merged">Squash Merge 완료!</string>
+</resources>

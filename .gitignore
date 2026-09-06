@@ -1,0 +1,28 @@
+# Python & Virtualenv
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+
+# Android & Gradle
+.gradle/
+build/
+*/build/
+*.apk
+*.aab
+local.properties
+.idea/
+*.iml
+
+# Environment & Secrets
+.env
+*.pem
+*.key
+*.p12
+
+# OS & Logs
+.DS_Store
+*.log
+.external_shadow/

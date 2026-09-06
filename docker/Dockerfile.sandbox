@@ -1,0 +1,23 @@
+# Continuum Standard Sandbox Image
+FROM python:3.11-slim-bookworm
+
+# Install core build and developer utilities
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    curl \
+    build-essential \
+    pkg-config \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install uv for ultra-fast dependency management
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+# Set working directory inside sandbox
+WORKDIR /workspace
+
+# Default non-root user setup for secure execution
+RUN useradd -m -u 1000 vibeuser && chown -R vibeuser:vibeuser /workspace
+USER vibeuser
+
+CMD ["bash"]
