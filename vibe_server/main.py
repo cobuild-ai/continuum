@@ -345,6 +345,51 @@ def chat_with_agent(req: ChatRequest):
         modified_files, ver_report = code_synth.execute_and_verify(target_path, req.message, task_id)
         diff_summary = git_mgr.get_diff(task_id, base_branch="main")
         
+        # ZERO FAKE PROTOCOL: If no files were actually modified, report honest failure
+        if diff_summary.total_files_changed == 0:
+            sm.transition_to(TaskState.FAILED)
+            err_msg = "코드 변경사항이 생성되지 않았습니다 (LLM Quota 초과 또는 모델 응답 없음)."
+            task_data = {
+                "id": task_id,
+                "prompt": req.message,
+                "state_machine": sm,
+                "state": TaskState.FAILED,
+                "branch_name": branch_name,
+                "lens_report": None,
+                "diff_summary": diff_summary,
+                "verification_report": ver_report,
+                "error_message": err_msg,
+                "created_at": datetime.now(timezone.utc),
+                "updated_at": datetime.now(timezone.utc),
+                "target_repo_path": str(target_path),
+                "base_branch": "main"
+            }
+            tasks_db[task_id] = task_data
+            reply_msg = (
+                f"⚠️ **[{target_path.name}]** 코드 변경사항이 생성되지 않았습니다.\n\n"
+                f"- **원인**: Cloud LLM 할당량(Rate Limit 429) 또는 AI 추론 지연으로 인해 코드 수정이 이루어지지 못했습니다.\n"
+                f"- **실측 결과**: 실제 변경된 파일이 0개입니다.\n"
+                f"- **조치**: 잠시 후 다시 요청하시거나, 로컬 SkyBrain 데몬 상태를 확인해 주세요."
+            )
+            task_obj = TaskResponse(
+                id=task_id,
+                prompt=req.message,
+                state=TaskState.FAILED,
+                branch_name=branch_name,
+                lens_report=None,
+                diff_summary=diff_summary,
+                verification_report=ver_report,
+                error_message=err_msg,
+                created_at=task_data["created_at"],
+                updated_at=task_data["updated_at"]
+            )
+            ChatHistoryManager.append_message(str(target_path), reply_msg, is_user=False, task=task_obj, is_error=True, error_message=err_msg)
+            return ChatResponse(
+                reply=reply_msg,
+                is_task=True,
+                task=task_obj
+            )
+
         sm.transition_to(TaskState.DIFF_READY)
         sm.transition_to(TaskState.AWAITING_MERGE_APPROVAL)
         

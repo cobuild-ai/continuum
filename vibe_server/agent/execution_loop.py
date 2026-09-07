@@ -197,14 +197,23 @@ class AutonomousAgentLoop:
         if last_test_result is None:
             last_test_result = tools.run_project_tests()
 
-        verified = bool(last_test_result and last_test_result.get("passed", False))
+        has_changes = len(modified_files) > 0
+        tests_passed = bool(last_test_result and last_test_result.get("passed", False))
+        # ZERO FAKE INVARIANT: Cannot be verified if no code files were modified!
+        verified = has_changes and tests_passed
+
+        summary = (
+            f"Agent loop finished after {turn} turns (verified={verified}, modified={len(modified_files)} files)."
+            if has_changes else
+            f"Agent failed to generate any code modifications after {turn} turns (LLM Rate Limit or model error)."
+        )
         return AgentExecutionResult(
             task_id=task_id,
             modified_files=modified_files,
             verified=verified,
             iterations=turn,
             test_result=last_test_result,
-            summary=f"Agent loop finished after {turn} turns (verified={verified}).",
+            summary=summary,
             logs=logs
         )
 
