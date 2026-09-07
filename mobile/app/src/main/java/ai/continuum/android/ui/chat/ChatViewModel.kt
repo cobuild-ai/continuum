@@ -91,7 +91,8 @@ class ChatViewModel(
                         val agentMsg = ai.continuum.android.data.models.ChatMessage(
                             text = chatRes.reply,
                             isUser = false,
-                            task = chatRes.task
+                            task = chatRes.task,
+                            engine = chatRes.engine
                         )
                         _messages.value = _messages.value + agentMsg
                     } else {
@@ -99,7 +100,8 @@ class ChatViewModel(
                         val chatMsg = ai.continuum.android.data.models.ChatMessage(
                             text = chatRes.reply,
                             isUser = false,
-                            task = null
+                            task = null,
+                            engine = chatRes.engine
                         )
                         _messages.value = _messages.value + chatMsg
                     }

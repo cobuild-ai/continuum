@@ -2,10 +2,12 @@ import json
 import logging
 import os
 import re
+import shutil
 import socket
+import subprocess
 import time
 import urllib.request
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
@@ -129,16 +131,33 @@ class AIEngineClient:
             skybrain_model=s.skybrain_model
         )
 
+    @classmethod
+    def _find_agy_bin(cls) -> Optional[str]:
+        bin_path = shutil.which("agy")
+        if bin_path and os.path.exists(bin_path):
+            return bin_path
+        local_bin = os.path.expanduser("~/.local/bin/agy")
+        if os.path.exists(local_bin):
+            return local_bin
+        return None
+
+    @property
+    def is_agy_available(self) -> bool:
+        """Determines if local Antigravity CLI (agy) is available."""
+        return self._find_agy_bin() is not None
+
     @property
     def active_model(self) -> str:
-        if self.provider == "gemini":
+        if self.provider == "skybrain":
+            return self.skybrain_model
+        elif self.is_agy_available:
+            return "antigravity (gemini-3.8-flash)"
+        elif self.provider == "gemini":
             return self.gemini_model
         elif self.provider == "claude":
             return self.claude_model
         elif self.provider in ("codex", "openai"):
             return self.openai_model
-        elif self.provider == "skybrain":
-            return self.skybrain_model
         return self.gemini_model
 
     @staticmethod
@@ -169,33 +188,56 @@ class AIEngineClient:
 
     def generate_chat(self, system_prompt: str, user_prompt: str, history: Optional[List[Dict[str, str]]] = None) -> str:
         """Generates conversational pair-programming responses."""
+        reply, _ = self.generate_chat_with_engine(system_prompt, user_prompt, history)
+        return reply
+
+    def generate_chat_with_engine(self, system_prompt: str, user_prompt: str, history: Optional[List[Dict[str, str]]] = None) -> Tuple[str, str]:
+        """Generates conversational pair-programming responses along with the responding engine name."""
+        # 1. 0순위: Antigravity CLI (agy) - 429 쿼터 제한 없는 최고 품질 Gemini 3.8 Flash
+        # 단, 명시적으로 provider="skybrain"으로 지정된 전용 인스턴스는 제외
+        if self.provider != "skybrain" and self.is_agy_available:
+            agy_res = self._call_agy_chat(system_prompt, user_prompt, history)
+            if agy_res:
+                return agy_res
+
+        # 2. 1순위: Cloud API Key 직접 호출
         if self.provider == "gemini" and self.gemini_api_key:
-            reply = self._call_gemini_chat(system_prompt, user_prompt, history)
-            if reply:
-                return reply
+            res = self._call_gemini_chat(system_prompt, user_prompt, history)
+            if res:
+                return res
         elif self.provider == "claude" and self.claude_api_key:
             reply = self._call_claude_chat(system_prompt, user_prompt, history)
             if reply:
-                return reply
+                return reply, f"claude ({self.claude_model})"
         elif self.provider in ("codex", "openai") and self.openai_api_key:
             reply = self._call_openai_chat(system_prompt, user_prompt, history)
             if reply:
-                return reply
+                return reply, f"openai ({self.openai_model})"
 
-        # Fallback to local SkyBrain ONLY IF enabled AND actively online (Circuit Breaker verified)
+        # 3. 2순위: Local SkyBrain (Circuit Breaker verified)
         if self.is_skybrain_available:
             logger.info("Local SkyBrain connection verified online. Routing fallback...")
-            return self._call_skybrain_chat(system_prompt, user_prompt, history)
+            reply = self._call_skybrain_chat(system_prompt, user_prompt, history)
+            return reply, f"skybrain ({self.skybrain_model})"
 
         clean_msg = user_prompt.strip()
-        return (
-            f"⚠️ **Continuum AI Engine 알림**: {self.provider.upper()} ({self.active_model}) 클라우드 요청 처리 중 일시적인 지연이 발생했습니다.\n\n"
+        err_reply = (
+            f"⚠️ **Continuum AI Engine 알림**: {self.provider.upper()} ({self.active_model}) 요청 처리 중 일시적인 지연이 발생했습니다.\n\n"
             f"- 요청 내용: **'{clean_msg[:40]}'**\n"
-            f"- 잠시 후 다시 전송해 주시거나 `.env`의 API Key를 확인해 주세요."
+            f"- 잠시 후 다시 전송해 주시거나 `.env`의 API Key 및 Antigravity CLI 상태를 확인해 주세요."
         )
+        return err_reply, "system"
 
     def generate_code_files(self, prompt: str) -> Dict[str, str]:
         """Generates code files dictionary {rel_path: content}."""
+        # 1. 0순위: Antigravity CLI (agy)
+        # 단, 명시적으로 provider="skybrain"으로 지정된 전용 인스턴스는 제외
+        if self.provider != "skybrain" and self.is_agy_available:
+            files = self._call_agy_code(prompt)
+            if files:
+                return files
+
+        # 2. 1순위: Cloud API Key 직접 호출
         if self.provider == "gemini" and self.gemini_api_key:
             files = self._call_gemini_code(prompt)
             if files:
@@ -209,14 +251,90 @@ class AIEngineClient:
             if files:
                 return files
 
+        # 3. 2순위: Local SkyBrain
         if self.is_skybrain_available:
             logger.info("Local SkyBrain connection verified online for code synthesis...")
             return self._call_skybrain_code(prompt)
 
         return {}
 
+    # ------------------ Antigravity CLI (agy) Implementation ------------------
+    def _call_agy_chat(self, system_prompt: str, user_prompt: str, history: Optional[List[Dict[str, str]]] = None) -> Optional[Tuple[str, str]]:
+        agy_bin = self._find_agy_bin()
+        if not agy_bin:
+            return None
+
+        prompt_parts = []
+        if system_prompt:
+            prompt_parts.append(f"[System Instructions]\n{system_prompt}")
+        if history:
+            prompt_parts.append("[Previous Conversation]")
+            for h in history[-4:]:
+                role = "User" if h.get("role") == "user" else "Assistant"
+                prompt_parts.append(f"{role}: {h.get('content', '')}")
+        prompt_parts.append(f"User: {user_prompt}\nAssistant:")
+        full_prompt = "\n\n".join(prompt_parts)
+
+        model = "gemini-3.8-flash-low"
+        cmd = [
+            agy_bin,
+            "--model", model,
+            "--disable-slash-commands",
+            "--output-format", "text",
+            "--print", full_prompt
+        ]
+        try:
+            res = subprocess.run(cmd, capture_output=True, text=True, timeout=30, check=False)
+            if res.returncode == 0 and res.stdout.strip():
+                reply = res.stdout.strip()
+                logger.info(f"Generated chat response via Antigravity CLI [{model}]")
+                return reply, f"antigravity ({model})"
+            else:
+                logger.warning(f"Antigravity CLI chat failed (rc={res.returncode}): {res.stderr.strip()[:200]}")
+        except subprocess.TimeoutExpired:
+            logger.warning("Antigravity CLI chat timed out after 30s")
+        except Exception as e:
+            logger.warning(f"Antigravity CLI chat error: {e}")
+        return None
+
+    def _call_agy_code(self, prompt: str) -> Dict[str, str]:
+        agy_bin = self._find_agy_bin()
+        if not agy_bin:
+            return {}
+
+        system_instruction = (
+            "You are an expert autonomous software engineer working within an isolated sandbox. "
+            "Given a user coding prompt, generate the required code files. "
+            "You MUST respond ONLY with a valid JSON array of objects, where each object has: "
+            '{"path": "relative/path/to/file.ext", "content": "file contents as raw text"}. '
+            "Do NOT include markdown wrapping or explanation outside the JSON array."
+        )
+        full_prompt = f"{system_instruction}\n\nCoding Task: {prompt}"
+        model = "gemini-3.8-flash-medium"
+        cmd = [
+            agy_bin,
+            "--model", model,
+            "--disable-slash-commands",
+            "--output-format", "text",
+            "--print", full_prompt
+        ]
+        try:
+            res = subprocess.run(cmd, capture_output=True, text=True, timeout=60, check=False)
+            if res.returncode == 0 and res.stdout.strip():
+                files = self._parse_json_files(res.stdout.strip(), prompt)
+                if files:
+                    logger.info(f"Generated code via Antigravity CLI [{model}] ({len(files)} files)")
+                    return files
+            else:
+                logger.warning(f"Antigravity CLI code failed (rc={res.returncode}): {res.stderr.strip()[:200]}")
+        except subprocess.TimeoutExpired:
+            logger.warning("Antigravity CLI code synthesis timed out after 60s")
+        except Exception as e:
+            logger.warning(f"Antigravity CLI code synthesis error: {e}")
+        return {}
+
     # ------------------ Gemini Implementation ------------------
-    def _call_gemini_chat(self, system_prompt: str, user_prompt: str, history: Optional[List[Dict[str, str]]] = None) -> Optional[str]:
+    def _call_gemini_chat(self, system_prompt: str, user_prompt: str, history: Optional[List[Dict[str, str]]] = None) -> Optional[Tuple[str, str]]:
         models_to_try = [self.gemini_model] + [m for m in GEMINI_FLASH_CANDIDATES if m != self.gemini_model]
         
         contents = []
@@ -243,7 +361,7 @@ class AIEngineClient:
                     data = json.loads(resp.read().decode("utf-8"))
                     text = data["candidates"][0]["content"]["parts"][0]["text"].strip()
                     logger.info(f"Generated chat via Gemini [{model_name}]")
-                    return text
+                    return text, f"gemini ({model_name})"
             except Exception as e:
                 code = getattr(e, "code", str(e))
                 logger.warning(f"Gemini model {model_name} failed ({code}), trying fallback...")

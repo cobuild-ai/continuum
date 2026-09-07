@@ -155,6 +155,7 @@ class ChatResponse(BaseModel):
     reply: str
     is_task: bool = False
     task: Optional[TaskResponse] = None
+    engine: Optional[str] = None
 
 
 class ChatMessageItem(BaseModel):
@@ -166,4 +167,6 @@ class ChatMessageItem(BaseModel):
     task: Optional[TaskResponse] = None
     isError: bool = False
     errorMessage: Optional[str] = None
+    engine: Optional[str] = None
+
 

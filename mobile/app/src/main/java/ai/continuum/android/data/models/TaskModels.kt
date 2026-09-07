@@ -85,7 +85,8 @@ data class ChatMessage(
     val timestamp: Long = System.currentTimeMillis(),
     val task: TaskResponse? = null,
     val isError: Boolean = false,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val engine: String? = null
 )
 
 data class ChatRequest(
@@ -96,6 +97,7 @@ data class ChatRequest(
 data class ChatResponse(
     val reply: String,
     @SerializedName("is_task") val isTask: Boolean = false,
-    val task: TaskResponse? = null
+    val task: TaskResponse? = null,
+    val engine: String? = null
 )
 

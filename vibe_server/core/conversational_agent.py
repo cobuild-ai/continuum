@@ -77,6 +77,11 @@ class ConversationalAgent:
 
     def chat(self, project_path: Path, message: str, history: List[Dict[str, str]] = None) -> str:
         """Interactively answers user questions about the project using Gemini Flash / SkyBrain."""
+        reply, _ = self.chat_with_engine(project_path, message, history)
+        return reply
+
+    def chat_with_engine(self, project_path: Path, message: str, history: List[Dict[str, str]] = None) -> Tuple[str, str]:
+        """Interactively answers user questions about the project, returning reply text and engine name."""
         project_name = project_path.name
         files_sample = [p.name for p in list(project_path.iterdir())[:12] if not p.name.startswith(".")]
 
@@ -100,4 +105,4 @@ class ConversationalAgent:
             f"Discuss code, architecture, or answer questions cleanly."
         )
 
-        return self.ai_client.generate_chat(system_prompt, message, history)
+        return self.ai_client.generate_chat_with_engine(system_prompt, message, history)

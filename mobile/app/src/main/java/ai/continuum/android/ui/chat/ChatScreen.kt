@@ -365,9 +365,7 @@ fun ChatScreen(
                                         .border(1.dp, CardBorder, RoundedCornerShape(4.dp, 16.dp, 16.dp, 16.dp))
                                 ) {
                                     Column(modifier = Modifier.padding(14.dp)) {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Text(text = "🤖 Continuum AI", color = PrimaryCyan, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                                        }
+                                        AiSenderBadge(engine = msg.engine)
                                         Spacer(modifier = Modifier.height(6.dp))
                                         Text(text = msg.text, color = TextPrimary, fontSize = 14.sp, lineHeight = 20.sp)
                                     }
@@ -452,11 +450,7 @@ fun ChatScreen(
                                     .border(1.dp, CardBorder, RoundedCornerShape(4.dp, 16.dp, 16.dp, 16.dp))
                             ) {
                                 Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text("🤖", fontSize = 11.sp)
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Text("Continuum AI", fontSize = 11.sp, color = PrimaryCyan, fontWeight = FontWeight.SemiBold)
-                                    }
+                                    AiSenderBadge(engine = msg.engine)
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(
                                         text = msg.text,
@@ -621,5 +615,32 @@ fun ChatScreen(
                 Spacer(modifier = Modifier.height(24.dp))
             }
         }
+    }
+}
+
+@Composable
+fun AiSenderBadge(engine: String?) {
+    val cleanEngine = engine?.lowercase() ?: ""
+    val (badgeText, badgeColor) = when {
+        cleanEngine.contains("antigravity") || cleanEngine.contains("agy") -> "✨ Antigravity (Gemini 3.8)" to PrimaryCyan
+        cleanEngine.contains("skybrain") -> "⚡ Local SkyBrain (Qwen 3.8)" to AccentPurple
+        cleanEngine.contains("gemini-3.8") || cleanEngine.contains("3.8") -> "🤖 Cloud Gemini (3.8 Flash)" to PrimaryCyan
+        cleanEngine.contains("gemini") -> "🤖 Cloud Gemini" to PrimaryCyan
+        engine.isNullOrBlank() -> "🤖 Continuum AI" to TextSecondary
+        else -> "🤖 $engine" to PrimaryCyan
+    }
+
+    Surface(
+        shape = RoundedCornerShape(4.dp),
+        color = IDEPillBg,
+        modifier = Modifier.padding(bottom = 4.dp)
+    ) {
+        Text(
+            text = badgeText,
+            color = badgeColor,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+        )
     }
 }

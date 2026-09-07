@@ -39,9 +39,16 @@ class ChatHistoryManager:
                     timestamp INTEGER NOT NULL,
                     task_json TEXT,
                     is_error INTEGER DEFAULT 0,
-                    error_message TEXT
+                    error_message TEXT,
+                    engine TEXT
                 );
             """)
+            # Auto-migrate existing databases to add engine column if missing
+            try:
+                conn.execute("ALTER TABLE chat_messages ADD COLUMN engine TEXT;")
+            except sqlite3.OperationalError:
+                pass
+
             conn.execute("""
                 CREATE INDEX IF NOT EXISTS idx_chat_project_ts
                 ON chat_messages(project_path, timestamp ASC);
@@ -92,7 +99,7 @@ class ChatHistoryManager:
                 conn.row_factory = sqlite3.Row
                 cursor = conn.execute(
                     """
-                    SELECT id, text, is_user, timestamp, task_json, is_error, error_message
+                    SELECT id, text, is_user, timestamp, task_json, is_error, error_message, engine
                     FROM chat_messages
                     WHERE project_path = ?
                     ORDER BY timestamp ASC
@@ -118,7 +125,8 @@ class ChatHistoryManager:
                             timestamp=row["timestamp"],
                             task=task_obj,
                             isError=bool(row["is_error"]),
-                            errorMessage=row["error_message"]
+                            errorMessage=row["error_message"],
+                            engine=row["engine"] if "engine" in row.keys() else None
                         ))
                     return messages
         except Exception as e:
@@ -133,7 +141,8 @@ class ChatHistoryManager:
         default_item = cls.append_message(
             project_path=resolved_path,
             text=default_greeting,
-            is_user=False
+            is_user=False,
+            engine="Continuum AI"
         )
         return [default_item]
 
@@ -145,7 +154,8 @@ class ChatHistoryManager:
         is_user: bool,
         task: Optional[TaskResponse] = None,
         is_error: bool = False,
-        error_message: Optional[str] = None
+        error_message: Optional[str] = None,
+        engine: Optional[str] = None
     ) -> ChatMessageItem:
         """Appends a single message to SQLite and returns the constructed item."""
         cls._init_db()
@@ -155,13 +165,14 @@ class ChatHistoryManager:
         msg_id = str(uuid.uuid4())
         ts = int(time.time() * 1000)
         task_json_str = json.dumps(task.model_dump(mode="json")) if task else None
+        sender_engine = "user" if is_user else (engine or "Continuum AI")
 
         try:
             with sqlite3.connect(db_path) as conn:
                 conn.execute(
                     """
-                    INSERT INTO chat_messages (id, project_path, text, is_user, timestamp, task_json, is_error, error_message)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO chat_messages (id, project_path, text, is_user, timestamp, task_json, is_error, error_message, engine)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         msg_id,
@@ -171,7 +182,8 @@ class ChatHistoryManager:
                         ts,
                         task_json_str,
                         1 if is_error else 0,
-                        error_message
+                        error_message,
+                        sender_engine
                     )
                 )
                 conn.commit()
@@ -185,7 +197,8 @@ class ChatHistoryManager:
             timestamp=ts,
             task=task,
             isError=is_error,
-            errorMessage=error_message
+            errorMessage=error_message,
+            engine=sender_engine
         )
 
     @classmethod

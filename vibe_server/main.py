@@ -428,21 +428,24 @@ def chat_with_agent(req: ChatRequest):
             created_at=task_data["created_at"],
             updated_at=task_data["updated_at"]
         )
+        active_engine = code_synth.ai_client.active_model
         reply_msg = f"🛠️ **[{target_path.name}]** 코드 구현 및 실측 테스트 검증이 완료되었습니다. 변경사항(Diff)을 검토 후 승인(Squash Merge)해주세요."
-        ChatHistoryManager.append_message(str(target_path), reply_msg, is_user=False, task=task_obj)
+        ChatHistoryManager.append_message(str(target_path), reply_msg, is_user=False, task=task_obj, engine=active_engine)
         return ChatResponse(
             reply=reply_msg,
             is_task=True,
-            task=task_obj
+            task=task_obj,
+            engine=active_engine
         )
     else:
         # Conversational Q&A / architecture dialog
-        reply_text = conv_agent.chat(target_path, req.message, req.conversation_history)
-        ChatHistoryManager.append_message(str(target_path), reply_text, is_user=False, task=None)
+        reply_text, engine_name = conv_agent.chat_with_engine(target_path, req.message, req.conversation_history)
+        ChatHistoryManager.append_message(str(target_path), reply_text, is_user=False, task=None, engine=engine_name)
         return ChatResponse(
             reply=reply_text,
             is_task=False,
-            task=None
+            task=None,
+            engine=engine_name
         )
 
 
