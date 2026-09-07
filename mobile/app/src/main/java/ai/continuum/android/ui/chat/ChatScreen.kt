@@ -559,39 +559,28 @@ fun ChatScreen(
                 }
             }
 
-            // Prominent Loading state indicator with step progression
+            // Natural AI Typing / Thinking Bubble (No fake diagnostics or premature analysis claims)
             if (uiState is ChatUiState.Loading) {
-                item(key = "loading_indicator") {
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = SurfaceCard,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .border(1.dp, PrimaryCyan.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+                item(key = "typing_bubble") {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Start
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(14.dp)
+                        Surface(
+                            shape = RoundedCornerShape(4.dp, 16.dp, 16.dp, 16.dp),
+                            color = SurfaceCard,
+                            modifier = Modifier.border(0.5.dp, CardBorder, RoundedCornerShape(4.dp, 16.dp, 16.dp, 16.dp))
                         ) {
-                            CircularProgressIndicator(
-                                color = PrimaryCyan,
-                                strokeWidth = 2.5.dp,
-                                modifier = Modifier.size(22.dp)
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)
+                            ) {
+                                Text(text = "🤖", fontSize = 14.sp)
+                                Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = "⚡ Continuum AI 분석 & 진단 진행 중...",
-                                    color = PrimaryCyan,
+                                    text = "Continuum이 답변을 작성하고 있습니다...",
                                     fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Spacer(modifier = Modifier.height(3.dp))
-                                Text(
-                                    text = "요청 분석 ➔ SkyBrain 5대 렌즈 평가 ➔ 응답 생성 중",
-                                    color = TextSecondary,
-                                    fontSize = 11.sp,
-                                    fontFamily = FontFamily.Monospace
+                                    color = TextSecondary
                                 )
                             }
                         }
