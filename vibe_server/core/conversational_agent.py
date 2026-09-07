@@ -79,9 +79,22 @@ class ConversationalAgent:
         """Interactively answers user questions about the project using Gemini Flash / SkyBrain."""
         project_name = project_path.name
         files_sample = [p.name for p in list(project_path.iterdir())[:12] if not p.name.startswith(".")]
-        
+
+        readme_summary = ""
+        readme_candidates = [project_path / "README.ko.md", project_path / "README.md"]
+        for r_file in readme_candidates:
+            if r_file.exists():
+                try:
+                    readme_summary = r_file.read_text(encoding="utf-8", errors="ignore")[:600].strip()
+                    break
+                except Exception:
+                    pass
+
+        context_info = f"\nProject Overview:\n{readme_summary}\n" if readme_summary else ""
+
         system_prompt = (
             f"You are Continuum, a mobile-first AI pair programmer for project '{project_name}'. "
+            f"{context_info}"
             f"Project files: {', '.join(files_sample)}. "
             f"Respond directly and naturally in Korean in 2-4 concise, helpful sentences. "
             f"Discuss code, architecture, or answer questions cleanly."
