@@ -24,10 +24,10 @@ def test_intent_classification():
 
 
 def test_chat_fallback(tmp_path: Path):
-    # Invalid url will trigger safe fallback
+    # Invalid url will trigger authentic error notification (Zero Fake Protocol)
     agent = ConversationalAgent(skybrain_url="http://127.0.0.1:9999/invalid")
     (tmp_path / "main.py").write_text("print(1)")
     
     reply = agent.chat(tmp_path, "안녕")
     assert "Continuum AI" in reply
-    assert tmp_path.name in reply
+    assert "요청 처리 중 일시적인 지연이 발생했습니다" in reply

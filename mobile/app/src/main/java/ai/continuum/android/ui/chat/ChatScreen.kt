@@ -41,8 +41,6 @@ fun ChatScreen(
     val projects by viewModel.projects.collectAsState()
     val activeProject by viewModel.activeProject.collectAsState()
     val messages by viewModel.messages.collectAsState()
-
-    var thoughtExpanded by remember { mutableStateOf(false) }
     var showProjectPicker by remember { mutableStateOf(false) }
     val listState = androidx.compose.foundation.lazy.rememberLazyListState()
 
@@ -378,93 +376,7 @@ fun ChatScreen(
                         }
                     }
 
-                    // Pill Badge: Proceeded with Implementation Plan
-                    item(key = "${msg.id}_plan") {
-                        Surface(
-                            shape = RoundedCornerShape(20.dp),
-                            color = SurfaceCard,
-                            modifier = Modifier.border(1.dp, CardBorder, RoundedCornerShape(20.dp))
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.CheckCircle,
-                                    contentDescription = null,
-                                    tint = PassGreen,
-                                    modifier = Modifier.size(14.dp)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = "Proceeded with",
-                                    color = TextSecondary,
-                                    fontSize = 12.sp
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Icon(
-                                    imageVector = Icons.Default.Description,
-                                    contentDescription = null,
-                                    tint = TextPrimary,
-                                    modifier = Modifier.size(14.dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = "Implementation Plan",
-                                    color = TextPrimary,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                            }
-                        }
-                    }
 
-                    // Thought step badge (Collapsible)
-                    item(key = "${msg.id}_thought") {
-                        Column(modifier = Modifier.fillMaxWidth()) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .clickable { thoughtExpanded = !thoughtExpanded }
-                                    .padding(vertical = 4.dp)
-                            ) {
-                                Text(
-                                    text = "Thought for 1.2s",
-                                    color = TextSecondary,
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Medium
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Icon(
-                                    imageVector = if (thoughtExpanded) Icons.Default.KeyboardArrowDown else Icons.Default.ChevronRight,
-                                    contentDescription = null,
-                                    tint = TextSecondary,
-                                    modifier = Modifier.size(14.dp)
-                                )
-                            }
-
-                            AnimatedVisibility(visible = thoughtExpanded) {
-                                Surface(
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = SurfaceCard,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(top = 6.dp)
-                                        .border(0.5.dp, CardBorder, RoundedCornerShape(8.dp))
-                                ) {
-                                    Column(modifier = Modifier.padding(10.dp)) {
-                                        Text(
-                                            text = "⚡ SkyBrain 5-Lens Evaluation: CleanCode 95/100, Architecture 90/100, Security 100/100, Performance 92/100, AIConduct 100/100. Target branch ${task.branchName} ready.",
-                                            color = TextSecondary,
-                                            fontSize = 11.sp,
-                                            fontFamily = FontFamily.Monospace
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
 
                     // Lens evaluation card (if available)
                     task.lensReport?.let { report ->

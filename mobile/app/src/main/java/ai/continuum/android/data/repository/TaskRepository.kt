@@ -26,32 +26,19 @@ class TaskRepository {
         return try {
             val res = api.listProjects()
             if (res.isSuccessful && res.body() != null) {
-                _projects.value = res.body()!!
-                if (_activeProject.value == null && res.body()!!.isNotEmpty()) {
-                    _activeProject.value = res.body()!!.first()
+                val list = res.body()!!
+                _projects.value = list
+                if (_activeProject.value == null && list.isNotEmpty()) {
+                    _activeProject.value = list.first()
                 }
-                Result.success(res.body()!!)
+                Result.success(list)
             } else {
-                val fallback = listOf(
-                    ProjectInfo("deartalk-ai", "/Users/smilelife/Projects/OSSProject/01-production/deartalk-ai", "main", true, true, "On-device AI chat app"),
-                    ProjectInfo("skybrain", "/Users/smilelife/Projects/OSSProject/01-production/skybrain", "main", true, true, "Local SLM serving daemon"),
-                    ProjectInfo("continuum", "/Users/smilelife/Projects/OSSProject/01-production/continuum", "main", true, true, "Vibe server & mobile client"),
-                    ProjectInfo("skynexus", "/Users/smilelife/Projects/OSSProject/01-production/skynexus", "main", true, true, "Gateway orchestrator"),
-                    ProjectInfo("myskynet", "/Users/smilelife/Projects/OSSProject/01-production/myskynet", "main", true, true, "Cloud coordination")
-                )
-                _projects.value = fallback
-                if (_activeProject.value == null) _activeProject.value = fallback.first()
-                Result.success(fallback)
+                _projects.value = emptyList()
+                Result.failure(Exception("Failed to fetch projects: ${res.code()} ${res.message()}"))
             }
         } catch (e: Exception) {
-            val fallback = listOf(
-                ProjectInfo("deartalk-ai", "/Users/smilelife/Projects/OSSProject/01-production/deartalk-ai", "main", true, true, "On-device AI chat app"),
-                ProjectInfo("skybrain", "/Users/smilelife/Projects/OSSProject/01-production/skybrain", "main", true, true, "Local SLM serving daemon"),
-                ProjectInfo("continuum", "/Users/smilelife/Projects/OSSProject/01-production/continuum", "main", true, true, "Vibe server & mobile client")
-            )
-            _projects.value = fallback
-            if (_activeProject.value == null) _activeProject.value = fallback.first()
-            Result.success(fallback)
+            _projects.value = emptyList()
+            Result.failure(e)
         }
     }
 
@@ -65,10 +52,10 @@ class TaskRepository {
                 _activeProject.value = res.body()
                 Result.success(res.body()!!)
             } else {
-                Result.success(project)
+                Result.failure(Exception("Failed to select project: ${res.code()}"))
             }
         } catch (e: Exception) {
-            Result.success(project)
+            Result.failure(e)
         }
     }
 
@@ -83,18 +70,7 @@ class TaskRepository {
                 }
                 Result.success(chatRes)
             } else {
-                // Fallback to direct task creation if chat endpoint returns error
-                val fallbackTaskRes = createTask(message, repo)
-                if (fallbackTaskRes.isSuccess) {
-                    val task = fallbackTaskRes.getOrNull()!!
-                    Result.success(ChatResponse(
-                        reply = "🛠️ 코드 구현 태스크가 접수되었습니다.",
-                        isTask = true,
-                        task = task
-                    ))
-                } else {
-                    Result.failure(Exception("Chat failed: ${res.code()}"))
-                }
+                Result.failure(Exception("Chat failed (${res.code()}): ${res.errorBody()?.string() ?: res.message()}"))
             }
         } catch (e: Exception) {
             Result.failure(e)

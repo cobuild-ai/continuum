@@ -153,8 +153,7 @@ class ChatHistoryManager:
         resolved_path = str(Path(project_path).resolve())
 
         msg_id = str(uuid.uuid4())
-        ts = int(time.time() * 1000)
-        task_json_str = json.dumps(task.model_dump()) if task else None
+        task_json_str = json.dumps(task.model_dump(mode="json")) if task else None
 
         try:
             with sqlite3.connect(db_path) as conn:

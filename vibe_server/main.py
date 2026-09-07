@@ -426,16 +426,20 @@ def clear_chat_history(project_path: Optional[str] = None):
 def create_task(req: TaskCreateRequest):
     task_id = str(uuid.uuid4())[:8]
     sm = TaskStateMachine(TaskState.IDLE)
-    
-    # 1. State: ANALYZING_LENS
+    target_repo = req.target_repo_path or active_project_path
+    target_path = Path(target_repo)
+
+    # 1. State: ANALYZING_LENS (Real workspace source static analysis)
     sm.transition_to(TaskState.ANALYZING_LENS)
-    report = lens_engine.evaluate(req.prompt)
+    if target_path.exists() and target_path.is_dir():
+        report = lens_engine.evaluate_project(target_path)
+    else:
+        report = lens_engine.evaluate(req.prompt)
     
     # 2. State: AWAITING_DESIGN_APPROVAL
     sm.transition_to(TaskState.AWAITING_DESIGN_APPROVAL)
     
     branch_name = f"{settings.ai_branch_prefix}{task_id}"
-    target_repo = req.target_repo_path or active_project_path
     task_data = {
         "id": task_id,
         "prompt": req.prompt,
