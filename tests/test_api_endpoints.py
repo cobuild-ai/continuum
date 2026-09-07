@@ -13,6 +13,7 @@ def test_health_check():
     data = response.json()
     assert data["status"] == "healthy"
     assert "Continuum" in data["service"]
+    assert data["ai_engine"]["model"] == "gemini-3.8-flash"
 
 
 def test_task_lifecycle_api_flow(tmp_path: Path):

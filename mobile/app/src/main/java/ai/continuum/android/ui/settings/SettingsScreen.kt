@@ -32,6 +32,8 @@ fun SettingsScreen(
     var portInput by remember(state.serverPort) { mutableStateOf(state.serverPort.toString()) }
     var repoPathInput by remember(state.targetRepoPath) { mutableStateOf(state.targetRepoPath) }
     var branchInput by remember(state.baseBranch) { mutableStateOf(state.baseBranch) }
+    var geminiKeyInput by remember(state.geminiApiKey) { mutableStateOf(state.geminiApiKey) }
+    var geminiModelInput by remember(state.geminiModel) { mutableStateOf(state.geminiModel) }
 
     Scaffold(
         topBar = {
@@ -180,7 +182,70 @@ fun SettingsScreen(
                 }
             }
 
-            // Section 4: Feedback & Governance
+            // Section 4: Gemini Cloud Engine
+            item {
+                SettingsSectionCard(title = "🤖 Gemini Cloud AI Engine") {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "Active Cloud Model",
+                            fontSize = 13.sp,
+                            color = TextPrimary,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = PrimaryCyan.copy(alpha = 0.15f),
+                            border = androidx.compose.foundation.BorderStroke(0.5.dp, PrimaryCyan)
+                        ) {
+                            Text(
+                                text = "⚡ Gemini 3.8 Flash",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = PrimaryCyan,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    OutlinedTextField(
+                        value = geminiModelInput,
+                        onValueChange = {
+                            geminiModelInput = it
+                            viewModel.updateGeminiModel(it)
+                        },
+                        label = { Text("Model ID (Default: gemini-3.8-flash)") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    OutlinedTextField(
+                        value = geminiKeyInput,
+                        onValueChange = {
+                            geminiKeyInput = it
+                            viewModel.updateGeminiApiKey(it)
+                        },
+                        label = { Text("Gemini API Key (Optional Override)") },
+                        visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "⚡ Continuum is powered by Google Gemini 3.8 Flash paired with Local SkyBrain (Qwen 3.8) Hybrid Routing.",
+                        fontSize = 11.sp,
+                        color = TextMuted
+                    )
+                }
+            }
+
+            // Section 5: Feedback & Governance
             item {
                 SettingsSectionCard(title = "🔔 Feedback & Governance") {
                     Row(

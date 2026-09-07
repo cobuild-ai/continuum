@@ -55,6 +55,11 @@ def health_check():
     return {
         "status": "healthy",
         "service": settings.app_name,
+        "ai_engine": {
+            "provider": settings.ai_provider,
+            "model": settings.gemini_model,
+            "skybrain_model": settings.skybrain_model
+        },
         "timestamp": datetime.now(timezone.utc).isoformat()
     }
 

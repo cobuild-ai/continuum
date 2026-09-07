@@ -36,8 +36,10 @@ object ContinuumSettings {
     // Language
     private const val KEY_LANGUAGE_CODE = "key_language_code"
 
-    // Gemini AI Engine
+    // Gemini AI Engine (Defaults to Gemini 3.8 Flash)
     private const val KEY_GEMINI_API_KEY = "key_gemini_api_key"
+    private const val KEY_GEMINI_MODEL = "key_gemini_model"
+    const val DEFAULT_GEMINI_MODEL = "gemini-3.8-flash"
 
     private fun getPrefs(context: Context): SharedPreferences {
         return context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
@@ -110,4 +112,9 @@ object ContinuumSettings {
     // Gemini Engine
     fun getGeminiApiKey(context: Context): String = getPrefs(context).getString(KEY_GEMINI_API_KEY, "") ?: ""
     fun setGeminiApiKey(context: Context, key: String) = getPrefs(context).edit().putString(KEY_GEMINI_API_KEY, key).apply()
+
+    fun getGeminiModel(context: Context): String =
+        getPrefs(context).getString(KEY_GEMINI_MODEL, DEFAULT_GEMINI_MODEL) ?: DEFAULT_GEMINI_MODEL
+    fun setGeminiModel(context: Context, model: String) =
+        getPrefs(context).edit().putString(KEY_GEMINI_MODEL, model).apply()
 }

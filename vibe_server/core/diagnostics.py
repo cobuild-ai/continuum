@@ -173,13 +173,26 @@ class PreflightAssessor:
             resolution=f"Adjust permissions: `chmod +w {target}`."
         )
 
+    def check_ai_engine(self) -> CheckItem:
+        from vibe_server.core.config import settings
+        from vibe_server.core.ai_client import AIEngineClient
+        client = AIEngineClient()
+        has_key = bool(client.gemini_api_key)
+        return CheckItem(
+            name="AI Engine Model",
+            status=CheckStatus.PASSED,
+            message=f"Configured: {settings.gemini_model} (Provider: {settings.ai_provider}, API Key: {'Active' if has_key else 'Fallback to Local SkyBrain'})",
+            resolution=None
+        )
+
     def run_all_checks(self) -> PreflightReport:
         checks = [
             self.check_python_version(),
             self.check_git_installed(),
             self.check_docker_sandbox(),
             self.check_port_available(),
-            self.check_workspace_writeable()
+            self.check_workspace_writeable(),
+            self.check_ai_engine()
         ]
 
         has_failures = any(c.status == CheckStatus.FAILED for c in checks)

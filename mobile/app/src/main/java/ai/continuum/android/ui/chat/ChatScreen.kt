@@ -70,12 +70,28 @@ fun ChatScreen(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column {
-                            Text(
-                                text = "Agent",
-                                fontSize = 11.sp,
-                                color = TextSecondary,
-                                fontWeight = FontWeight.Medium
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = "Agent",
+                                    fontSize = 11.sp,
+                                    color = TextSecondary,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Surface(
+                                    shape = RoundedCornerShape(4.dp),
+                                    color = PrimaryCyan.copy(alpha = 0.15f),
+                                    border = androidx.compose.foundation.BorderStroke(0.5.dp, PrimaryCyan.copy(alpha = 0.5f))
+                                ) {
+                                    Text(
+                                        text = "⚡ Gemini 3.8 Flash",
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = PrimaryCyan,
+                                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
+                                    )
+                                }
+                            }
                             Spacer(modifier = Modifier.height(2.dp))
 
                             // Interactive Project Selector Pill
