@@ -26,14 +26,20 @@ class Settings(BaseSettings):
     # Gemini Configuration
     gemini_model: str = "gemini-3.8-flash"
     gemini_api_key: str = ""
+    gemini_api_url: str = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
 
     # Claude Configuration
     claude_model: str = "claude-3-7-sonnet-20250219"
     claude_api_key: str = ""
+    claude_api_url: str = "https://api.anthropic.com/v1/messages"
 
-    # OpenAI / Codex Configuration
+    # OpenAI / Codex / Custom Gateway Configuration
     openai_model: str = "gpt-4o"
     openai_api_key: str = ""
+    openai_api_url: str = "https://api.openai.com/v1/chat/completions"
+
+    # Generic Custom API URL (For LiteLLM, Cloudflare AI Gateway, vLLM, Ollama, etc.)
+    custom_api_url: str = ""
 
     # Local SkyBrain SLM (Optional: set to False if SkyBrain daemon is not running)
     skybrain_enabled: bool = False

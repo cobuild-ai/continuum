@@ -31,10 +31,14 @@ class AIEngineClient:
         provider: str = "gemini",  # "gemini" | "claude" | "codex" | "openai" | "skybrain"
         gemini_model: str = "gemini-3.8-flash",
         gemini_api_key: Optional[str] = None,
+        gemini_api_url: str = GEMINI_API_URL,
         claude_model: str = "claude-3-7-sonnet-20250219",
         claude_api_key: Optional[str] = None,
+        claude_api_url: str = CLAUDE_API_URL,
         openai_model: str = "gpt-4o",
         openai_api_key: Optional[str] = None,
+        openai_api_url: str = OPENAI_API_URL,
+        custom_api_url: str = "",
         skybrain_enabled: bool = False,
         skybrain_url: str = SKYBRAIN_URL,
         skybrain_model: str = "qwen3.8"
@@ -42,18 +46,30 @@ class AIEngineClient:
         self.provider = provider
         self.gemini_model = gemini_model
         self.gemini_api_key = self._resolve_api_key("GEMINI_API_KEY", gemini_api_key)
+        self.gemini_api_url = gemini_api_url
+
         self.claude_model = claude_model
         self.claude_api_key = self._resolve_api_key("ANTHROPIC_API_KEY", claude_api_key)
+        self.claude_api_url = claude_api_url
+
         self.openai_model = openai_model
         self.openai_api_key = self._resolve_api_key("OPENAI_API_KEY", openai_api_key)
+        self.openai_api_url = openai_api_url
+        self.custom_api_url = custom_api_url
         
         self.skybrain_enabled = skybrain_enabled
         self.skybrain_url = skybrain_url
         self.skybrain_model = skybrain_model
 
+        target_url = self.custom_api_url or (
+            self.claude_api_url if self.provider == "claude"
+            else self.openai_api_url if self.provider in ("codex", "openai")
+            else self.skybrain_url if self.provider == "skybrain"
+            else "Google GenerativeLanguage"
+        )
         logger.info(
             f"AIEngineClient initialized: provider={self.provider}, "
-            f"model={self.active_model}, skybrain_enabled={self.skybrain_enabled}"
+            f"model={self.active_model}, endpoint={target_url}, skybrain_enabled={self.skybrain_enabled}"
         )
 
     @classmethod
@@ -65,10 +81,14 @@ class AIEngineClient:
             provider=s.ai_provider,
             gemini_model=s.gemini_model,
             gemini_api_key=s.gemini_api_key,
+            gemini_api_url=getattr(s, "gemini_api_url", GEMINI_API_URL),
             claude_model=s.claude_model,
             claude_api_key=s.claude_api_key,
+            claude_api_url=getattr(s, "claude_api_url", CLAUDE_API_URL),
             openai_model=s.openai_model,
             openai_api_key=s.openai_api_key,
+            openai_api_url=getattr(s, "openai_api_url", OPENAI_API_URL),
+            custom_api_url=getattr(s, "custom_api_url", ""),
             skybrain_enabled=s.skybrain_enabled,
             skybrain_url=s.skybrain_url,
             skybrain_model=s.skybrain_model
@@ -251,7 +271,7 @@ class AIEngineClient:
             "anthropic-version": "2023-06-01"
         }
         try:
-            req = urllib.request.Request(CLAUDE_API_URL, data=json.dumps(payload).encode("utf-8"), headers=headers)
+            req = urllib.request.Request(self.claude_api_url, data=json.dumps(payload).encode("utf-8"), headers=headers)
             with urllib.request.urlopen(req, timeout=15) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
                 for block in data.get("content", []):
@@ -281,7 +301,7 @@ class AIEngineClient:
             "anthropic-version": "2023-06-01"
         }
         try:
-            req = urllib.request.Request(CLAUDE_API_URL, data=json.dumps(payload).encode("utf-8"), headers=headers)
+            req = urllib.request.Request(self.claude_api_url, data=json.dumps(payload).encode("utf-8"), headers=headers)
             with urllib.request.urlopen(req, timeout=30) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
                 text = ""
@@ -293,7 +313,7 @@ class AIEngineClient:
             logger.warning(f"Claude code call failed: {e}")
         return {}
 
-    # ------------------ OpenAI / Codex Implementation ------------------
+    # ------------------ OpenAI / Codex / Custom Gateway Implementation ------------------
     def _call_openai_chat(self, system_prompt: str, user_prompt: str, history: Optional[List[Dict[str, str]]] = None) -> Optional[str]:
         messages = [{"role": "system", "content": system_prompt}]
         if history:
@@ -311,13 +331,14 @@ class AIEngineClient:
             "Content-Type": "application/json",
             "Authorization": f"Bearer {self.openai_api_key}"
         }
+        target_url = self.custom_api_url or self.openai_api_url
         try:
-            req = urllib.request.Request(OPENAI_API_URL, data=json.dumps(payload).encode("utf-8"), headers=headers)
+            req = urllib.request.Request(target_url, data=json.dumps(payload).encode("utf-8"), headers=headers)
             with urllib.request.urlopen(req, timeout=15) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
                 return data["choices"][0]["message"]["content"].strip()
         except Exception as e:
-            logger.warning(f"OpenAI chat call failed: {e}")
+            logger.warning(f"OpenAI/Custom gateway chat call failed ({target_url}): {e}")
         return None
 
     def _call_openai_code(self, prompt: str) -> Dict[str, str]:
@@ -339,14 +360,15 @@ class AIEngineClient:
             "Content-Type": "application/json",
             "Authorization": f"Bearer {self.openai_api_key}"
         }
+        target_url = self.custom_api_url or self.openai_api_url
         try:
-            req = urllib.request.Request(OPENAI_API_URL, data=json.dumps(payload).encode("utf-8"), headers=headers)
+            req = urllib.request.Request(target_url, data=json.dumps(payload).encode("utf-8"), headers=headers)
             with urllib.request.urlopen(req, timeout=30) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
                 text = data["choices"][0]["message"]["content"]
                 return self._parse_json_files(text, prompt)
         except Exception as e:
-            logger.warning(f"OpenAI code call failed: {e}")
+            logger.warning(f"OpenAI/Custom gateway code call failed ({target_url}): {e}")
         return {}
 
     # ------------------ SkyBrain Implementation ------------------

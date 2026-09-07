@@ -58,6 +58,7 @@ def health_check():
         "ai_engine": {
             "provider": settings.ai_provider,
             "model": settings.active_model_name,
+            "custom_gateway": bool(settings.custom_api_url),
             "skybrain_enabled": settings.skybrain_enabled,
             "skybrain_model": settings.skybrain_model if settings.skybrain_enabled else None
         },
