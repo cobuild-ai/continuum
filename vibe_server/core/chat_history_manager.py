@@ -1,66 +1,141 @@
-"""Chat History Manager for persisting and loading AI conversation streams per project."""
+"""SQLite-backed Chat History Manager with auto-expiration (retention policy)."""
 import json
 import logging
+import sqlite3
 import time
 import uuid
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import List, Optional
 
+from vibe_server.core.config import settings
 from vibe_server.core.models import ChatMessageItem, TaskResponse
 
 logger = logging.getLogger(__name__)
 
-HISTORY_STORAGE_DIR = Path.home() / ".continuum" / "chat_history"
-
 
 class ChatHistoryManager:
-    """Manages persistent chat conversation logs for each workspace project."""
+    """
+    Manages persistent chat conversation logs for each workspace project
+    using an embedded SQLite database with automatic retention cleanup.
+    """
 
     @classmethod
-    def _get_project_key(cls, project_path: str) -> str:
-        """Derive a safe filesystem key from project path."""
-        p = Path(project_path).resolve()
-        return p.name.lower().replace(" ", "_")
+    def _get_db_path(cls) -> Path:
+        db_path = settings.chat_db_path
+        db_path.parent.mkdir(parents=True, exist_ok=True)
+        return db_path
 
     @classmethod
-    def _get_file_path(cls, project_path: str) -> Path:
-        HISTORY_STORAGE_DIR.mkdir(parents=True, exist_ok=True)
-        key = cls._get_project_key(project_path)
-        return HISTORY_STORAGE_DIR / f"{key}_history.json"
+    def _init_db(cls) -> None:
+        """Initializes table schema and indices if not present."""
+        db_path = cls._get_db_path()
+        with sqlite3.connect(db_path) as conn:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS chat_messages (
+                    id TEXT PRIMARY KEY,
+                    project_path TEXT NOT NULL,
+                    text TEXT NOT NULL,
+                    is_user INTEGER NOT NULL,
+                    timestamp INTEGER NOT NULL,
+                    task_json TEXT,
+                    is_error INTEGER DEFAULT 0,
+                    error_message TEXT
+                );
+            """)
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_chat_project_ts
+                ON chat_messages(project_path, timestamp ASC);
+            """)
+            conn.commit()
 
     @classmethod
-    def get_history(cls, project_path: str) -> List[ChatMessageItem]:
-        """Loads chat history for the given project. Returns default greeting if empty."""
-        filepath = cls._get_file_path(project_path)
-        if not filepath.exists():
-            # Initial default greeting from AI
-            project_name = Path(project_path).name
-            default_item = ChatMessageItem(
-                id=str(uuid.uuid4()),
-                text=f"안녕하세요! '{project_name}' 프로젝트의 페어 프로그래머 Continuum입니다. 어떤 코드 작업이나 질문이 있으신가요?",
-                isUser=False,
-                timestamp=int(time.time() * 1000)
-            )
-            cls.save_history(project_path, [default_item])
-            return [default_item]
+    def purge_expired_messages(cls, retention_days: Optional[int] = None) -> int:
+        """
+        Deletes messages older than the retention threshold.
+        If retention_days is 0, retention is disabled (records kept indefinitely).
+        Returns the number of deleted rows.
+        """
+        days = retention_days if retention_days is not None else settings.chat_retention_days
+        if days <= 0:
+            return 0
+
+        cutoff_ms = int((time.time() - (days * 86400)) * 1000)
+        cls._init_db()
+        db_path = cls._get_db_path()
+        try:
+            with sqlite3.connect(db_path) as conn:
+                cursor = conn.execute(
+                    "DELETE FROM chat_messages WHERE timestamp < ?",
+                    (cutoff_ms,)
+                )
+                deleted = cursor.rowcount
+                conn.commit()
+                if deleted > 0:
+                    logger.info(f"Purged {deleted} chat messages older than {days} days (cutoff: {cutoff_ms}).")
+                return deleted
+        except Exception as e:
+            logger.error(f"Failed to purge expired chat messages: {e}")
+            return 0
+
+    @classmethod
+    def get_history(cls, project_path: str, limit: int = 100) -> List[ChatMessageItem]:
+        """Loads chat history for the given project from SQLite. Returns default greeting if empty."""
+        cls._init_db()
+        # Auto-purge expired messages on read
+        cls.purge_expired_messages()
+
+        db_path = cls._get_db_path()
+        resolved_path = str(Path(project_path).resolve())
 
         try:
-            with open(filepath, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                return [ChatMessageItem(**item) for item in data]
-        except Exception as e:
-            logger.warning(f"Failed to load chat history from {filepath}: {e}")
-            return []
+            with sqlite3.connect(db_path) as conn:
+                conn.row_factory = sqlite3.Row
+                cursor = conn.execute(
+                    """
+                    SELECT id, text, is_user, timestamp, task_json, is_error, error_message
+                    FROM chat_messages
+                    WHERE project_path = ?
+                    ORDER BY timestamp ASC
+                    LIMIT ?
+                    """,
+                    (resolved_path, limit)
+                )
+                rows = cursor.fetchall()
+                if rows:
+                    messages = []
+                    for row in rows:
+                        task_obj = None
+                        if row["task_json"]:
+                            try:
+                                task_obj = TaskResponse(**json.loads(row["task_json"]))
+                            except Exception:
+                                pass
 
-    @classmethod
-    def save_history(cls, project_path: str, messages: List[ChatMessageItem]) -> None:
-        """Persists the conversation messages to disk."""
-        filepath = cls._get_file_path(project_path)
-        try:
-            with open(filepath, "w", encoding="utf-8") as f:
-                json.dump([item.model_dump() for item in messages], f, ensure_ascii=False, indent=2)
+                        messages.append(ChatMessageItem(
+                            id=row["id"],
+                            text=row["text"],
+                            isUser=bool(row["is_user"]),
+                            timestamp=row["timestamp"],
+                            task=task_obj,
+                            isError=bool(row["is_error"]),
+                            errorMessage=row["error_message"]
+                        ))
+                    return messages
         except Exception as e:
-            logger.error(f"Failed to save chat history to {filepath}: {e}")
+            logger.warning(f"Failed to load chat history from SQLite: {e}")
+
+        # If empty, create initial default greeting from AI
+        project_name = Path(project_path).name
+        default_greeting = (
+            f"안녕하세요! '{project_name}' 프로젝트의 페어 프로그래머 Continuum입니다. "
+            f"어떤 코드 작업이나 아키텍처 질문이 있으신가요?"
+        )
+        default_item = cls.append_message(
+            project_path=resolved_path,
+            text=default_greeting,
+            is_user=False
+        )
+        return [default_item]
 
     @classmethod
     def append_message(
@@ -72,20 +147,43 @@ class ChatHistoryManager:
         is_error: bool = False,
         error_message: Optional[str] = None
     ) -> ChatMessageItem:
-        """Appends a single message to the project's chat log and saves it."""
-        history = cls.get_history(project_path)
-        new_item = ChatMessageItem(
-            id=str(uuid.uuid4()),
+        """Appends a single message to SQLite and returns the constructed item."""
+        cls._init_db()
+        db_path = cls._get_db_path()
+        resolved_path = str(Path(project_path).resolve())
+
+        msg_id = str(uuid.uuid4())
+        ts = int(time.time() * 1000)
+        task_json_str = json.dumps(task.model_dump()) if task else None
+
+        try:
+            with sqlite3.connect(db_path) as conn:
+                conn.execute(
+                    """
+                    INSERT INTO chat_messages (id, project_path, text, is_user, timestamp, task_json, is_error, error_message)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        msg_id,
+                        resolved_path,
+                        text,
+                        1 if is_user else 0,
+                        ts,
+                        task_json_str,
+                        1 if is_error else 0,
+                        error_message
+                    )
+                )
+                conn.commit()
+        except Exception as e:
+            logger.error(f"Failed to insert chat message into SQLite: {e}")
+
+        return ChatMessageItem(
+            id=msg_id,
             text=text,
             isUser=is_user,
-            timestamp=int(time.time() * 1000),
+            timestamp=ts,
             task=task,
             isError=is_error,
             errorMessage=error_message
         )
-        history.append(new_item)
-        # Limit history to latest 100 messages to prevent infinite growth
-        if len(history) > 100:
-            history = history[-100:]
-        cls.save_history(project_path, history)
-        return new_item

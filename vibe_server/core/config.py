@@ -46,6 +46,10 @@ class Settings(BaseSettings):
     skybrain_url: str = "http://127.0.0.1:8000/v1/chat/completions"
     skybrain_model: str = "qwen3.8"
 
+    # SQLite Chat History & Retention Policy (in days: e.g. 90 = 3 months, 0 = keep indefinitely)
+    chat_retention_days: int = 90
+    chat_db_path: Path = Path.home() / ".continuum" / "continuum_chat.db"
+
     @property
     def active_model_name(self) -> str:
         if self.ai_provider == "gemini":
