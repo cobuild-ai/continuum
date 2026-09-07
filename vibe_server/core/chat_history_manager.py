@@ -187,3 +187,24 @@ class ChatHistoryManager:
             isError=is_error,
             errorMessage=error_message
         )
+
+    @classmethod
+    def clear_history(cls, project_path: str) -> int:
+        """Explicitly deletes all conversation messages for a project to start a clean new session."""
+        cls._init_db()
+        db_path = cls._get_db_path()
+        resolved_path = str(Path(project_path).resolve())
+
+        try:
+            with sqlite3.connect(db_path) as conn:
+                cursor = conn.execute(
+                    "DELETE FROM chat_messages WHERE project_path = ?",
+                    (resolved_path,)
+                )
+                deleted = cursor.rowcount
+                conn.commit()
+                logger.info(f"Cleared {deleted} chat messages for project: {resolved_path}")
+                return deleted
+        except Exception as e:
+            logger.error(f"Failed to clear chat history for {resolved_path}: {e}")
+            return 0

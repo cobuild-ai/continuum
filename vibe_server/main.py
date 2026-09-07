@@ -411,6 +411,17 @@ def get_chat_history(project_path: Optional[str] = None):
     return ChatHistoryManager.get_history(target)
 
 
+@app.delete("/api/v1/chat/history", tags=["Chat"])
+def clear_chat_history(project_path: Optional[str] = None):
+    """
+    Clear all conversation history for the given or active project,
+    allowing the user to reset to a clean new working session.
+    """
+    target = project_path or active_project_path
+    deleted = ChatHistoryManager.clear_history(target)
+    return {"status": "success", "deleted_messages": deleted, "project_path": target}
+
+
 @app.post("/api/v1/tasks", response_model=TaskResponse, status_code=status.HTTP_201_CREATED, tags=["Tasks"])
 def create_task(req: TaskCreateRequest):
     task_id = str(uuid.uuid4())[:8]

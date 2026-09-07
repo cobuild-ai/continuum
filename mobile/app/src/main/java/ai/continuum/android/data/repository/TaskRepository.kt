@@ -115,6 +115,16 @@ class TaskRepository {
         }
     }
 
+    suspend fun clearChatHistory(projectPath: String? = null): Result<Boolean> {
+        return try {
+            val target = projectPath ?: _activeProject.value?.path
+            val res = api.clearChatHistory(target)
+            Result.success(res.isSuccessful)
+        } catch (e: Exception) {
+            Result.success(false)
+        }
+    }
+
     suspend fun createTask(prompt: String, targetRepo: String? = null): Result<TaskResponse> {
         return try {
             val repo = targetRepo ?: _activeProject.value?.path

@@ -59,6 +59,13 @@ class ChatViewModel(
         }
     }
 
+    fun clearChatSession() {
+        viewModelScope.launch {
+            _messages.value = emptyList()
+            repository.clearChatHistory(activeProject.value?.path)
+        }
+    }
+
     fun selectProject(project: ProjectInfo) {
         viewModelScope.launch {
             _messages.value = emptyList()

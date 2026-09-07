@@ -133,8 +133,16 @@ fun ChatScreen(
                             }
                         }
 
-                        // Action Icons: Refresh, Settings
+                        // Action Icons: Clear Chat, Refresh, Settings
                         Row(verticalAlignment = Alignment.CenterVertically) {
+                            IconButton(onClick = { viewModel.clearChatSession() }) {
+                                Icon(
+                                    imageVector = Icons.Default.DeleteOutline,
+                                    contentDescription = "Clear Chat Session",
+                                    tint = TextSecondary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
                             IconButton(onClick = { viewModel.loadProjects() }) {
                                 Icon(Icons.Default.Refresh, contentDescription = "Refresh", tint = TextSecondary, modifier = Modifier.size(18.dp))
                             }

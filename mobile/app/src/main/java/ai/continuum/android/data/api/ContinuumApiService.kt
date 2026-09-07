@@ -54,6 +54,11 @@ interface ContinuumApiService {
     suspend fun getChatHistory(
         @retrofit2.http.Query("project_path") projectPath: String? = null
     ): Response<List<ai.continuum.android.data.models.ChatMessage>>
+
+    @retrofit2.http.DELETE("api/v1/chat/history")
+    suspend fun clearChatHistory(
+        @retrofit2.http.Query("project_path") projectPath: String? = null
+    ): Response<Map<String, Any>>
 }
 
 object NetworkModule {
