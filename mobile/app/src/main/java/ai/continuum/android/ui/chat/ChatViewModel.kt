@@ -41,6 +41,21 @@ class ChatViewModel(
     fun loadProjects() {
         viewModelScope.launch {
             repository.loadProjects()
+            val current = repository.activeProject.value
+            if (current != null) {
+                loadChatHistory(current.path)
+            }
+        }
+    }
+
+    fun loadChatHistory(projectPath: String? = null) {
+        viewModelScope.launch {
+            val result = repository.loadChatHistory(projectPath)
+            result.onSuccess { hist ->
+                if (hist.isNotEmpty()) {
+                    _messages.value = hist
+                }
+            }
         }
     }
 
@@ -48,6 +63,7 @@ class ChatViewModel(
         viewModelScope.launch {
             _messages.value = emptyList()
             repository.selectProject(project)
+            loadChatHistory(project.path)
         }
     }
 

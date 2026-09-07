@@ -101,6 +101,20 @@ class TaskRepository {
         }
     }
 
+    suspend fun loadChatHistory(projectPath: String? = null): Result<List<ChatMessage>> {
+        return try {
+            val target = projectPath ?: _activeProject.value?.path
+            val res = api.getChatHistory(target)
+            if (res.isSuccessful && res.body() != null) {
+                Result.success(res.body()!!)
+            } else {
+                Result.success(emptyList())
+            }
+        } catch (e: Exception) {
+            Result.success(emptyList())
+        }
+    }
+
     suspend fun createTask(prompt: String, targetRepo: String? = null): Result<TaskResponse> {
         return try {
             val repo = targetRepo ?: _activeProject.value?.path

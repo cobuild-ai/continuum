@@ -156,3 +156,14 @@ class ChatResponse(BaseModel):
     is_task: bool = False
     task: Optional[TaskResponse] = None
 
+
+class ChatMessageItem(BaseModel):
+    """Represents a persisted chat conversation message for mobile IDE synchronization."""
+    id: str
+    text: str
+    isUser: bool
+    timestamp: int
+    task: Optional[TaskResponse] = None
+    isError: bool = False
+    errorMessage: Optional[str] = None
+

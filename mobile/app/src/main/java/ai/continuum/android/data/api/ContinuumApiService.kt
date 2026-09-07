@@ -49,6 +49,11 @@ interface ContinuumApiService {
 
     @POST("api/v1/chat")
     suspend fun chatWithAgent(@Body request: ai.continuum.android.data.models.ChatRequest): Response<ai.continuum.android.data.models.ChatResponse>
+
+    @GET("api/v1/chat/history")
+    suspend fun getChatHistory(
+        @retrofit2.http.Query("project_path") projectPath: String? = null
+    ): Response<List<ai.continuum.android.data.models.ChatMessage>>
 }
 
 object NetworkModule {

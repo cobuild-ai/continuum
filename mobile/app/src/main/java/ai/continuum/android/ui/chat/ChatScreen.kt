@@ -158,69 +158,60 @@ fun ChatScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
                 ) {
-                    // Modern IDE Input Box
+                    // Modern Streamlined AI Chat Input Capsule
                     Card(
-                        shape = RoundedCornerShape(16.dp),
+                        shape = RoundedCornerShape(24.dp),
                         colors = CardDefaults.cardColors(containerColor = SurfaceCard),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .border(1.dp, CardBorder, RoundedCornerShape(16.dp))
+                            .border(1.dp, CardBorder, RoundedCornerShape(24.dp))
                     ) {
-                        // Linear progress indicator while waiting for AI
-                        if (uiState is ChatUiState.Loading) {
-                            LinearProgressIndicator(
-                                color = PrimaryCyan,
-                                trackColor = CardBorder,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(2.dp)
-                            )
-                        }
-                        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
-                            // Text Input Field
-                            TextField(
-                                value = promptInput,
-                                onValueChange = { promptInput = it },
-                                placeholder = {
-                                    Text(
-                                        "Ask anything for ${activeProject?.name ?: "workspace"}...",
-                                        color = TextMuted,
-                                        fontSize = 13.sp
-                                    )
-                                },
-                                colors = TextFieldDefaults.colors(
-                                    focusedContainerColor = androidx.compose.ui.graphics.Color.Transparent,
-                                    unfocusedContainerColor = androidx.compose.ui.graphics.Color.Transparent,
-                                    focusedTextColor = TextPrimary,
-                                    unfocusedTextColor = TextPrimary,
-                                    focusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent,
-                                    unfocusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent
-                                ),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .heightIn(min = 40.dp, max = 100.dp)
-                            )
-
-                            Spacer(modifier = Modifier.height(6.dp))
-
-                            // Bottom Controls inside Input Card
+                        Column {
+                            // Subtle progress line while waiting for AI
+                            if (uiState is ChatUiState.Loading) {
+                                LinearProgressIndicator(
+                                    color = PrimaryCyan,
+                                    trackColor = CardBorder,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(2.dp)
+                                )
+                            }
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                modifier = Modifier.fillMaxWidth()
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 8.dp, vertical = 4.dp)
                             ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        imageVector = Icons.Default.Add,
-                                        contentDescription = "Add attachment",
-                                        tint = TextMuted,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                }
+                                // Text Input Field
+                                TextField(
+                                    value = promptInput,
+                                    onValueChange = { promptInput = it },
+                                    placeholder = {
+                                        Text(
+                                            "Ask anything for ${activeProject?.name ?: "workspace"}...",
+                                            color = TextMuted,
+                                            fontSize = 13.sp
+                                        )
+                                    },
+                                    colors = TextFieldDefaults.colors(
+                                        focusedContainerColor = androidx.compose.ui.graphics.Color.Transparent,
+                                        unfocusedContainerColor = androidx.compose.ui.graphics.Color.Transparent,
+                                        focusedTextColor = TextPrimary,
+                                        unfocusedTextColor = TextPrimary,
+                                        focusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent,
+                                        unfocusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent
+                                    ),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .heightIn(min = 40.dp, max = 120.dp)
+                                )
 
-                                // Send Button with loading state
+                                Spacer(modifier = Modifier.width(4.dp))
+
+                                // Inline Send Button (Aligned to the right of input field)
                                 IconButton(
                                     onClick = {
                                         if (promptInput.isNotBlank() && uiState !is ChatUiState.Loading) {
@@ -229,25 +220,26 @@ fun ChatScreen(
                                             viewModel.sendPrompt(textToSend)
                                         }
                                     },
-                                    enabled = uiState !is ChatUiState.Loading,
+                                    enabled = promptInput.isNotBlank() && uiState !is ChatUiState.Loading,
                                     colors = IconButtonDefaults.iconButtonColors(
-                                        containerColor = if (uiState is ChatUiState.Loading) IDETagBg else IDEButtonBlue,
-                                        disabledContainerColor = IDETagBg
+                                        containerColor = if (promptInput.isNotBlank()) IDEButtonBlue else IDETagBg,
+                                        contentColor = TextPrimary,
+                                        disabledContainerColor = IDETagBg.copy(alpha = 0.5f),
+                                        disabledContentColor = TextMuted
                                     ),
-                                    modifier = Modifier.size(28.dp)
+                                    modifier = Modifier.size(36.dp)
                                 ) {
                                     if (uiState is ChatUiState.Loading) {
                                         CircularProgressIndicator(
                                             color = PrimaryCyan,
                                             strokeWidth = 2.dp,
-                                            modifier = Modifier.size(14.dp)
+                                            modifier = Modifier.size(16.dp)
                                         )
                                     } else {
                                         Icon(
                                             imageVector = Icons.AutoMirrored.Filled.Send,
                                             contentDescription = "Send",
-                                            tint = TextPrimary,
-                                            modifier = Modifier.size(14.dp)
+                                            modifier = Modifier.size(16.dp)
                                         )
                                     }
                                 }
@@ -268,13 +260,40 @@ fun ChatScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // Case 1: Standby state when no messages and no active task
+            // Case 1: Empty state placeholder (only shown if truly no messages yet)
             if (messages.isEmpty() && activeTask == null) {
                 item {
-                    ProjectStandbyCard(
-                        project = activeProject,
-                        onQuickPrompt = { promptInput = it }
-                    )
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 40.dp, horizontal = 20.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = PrimaryCyan.copy(alpha = 0.1f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, PrimaryCyan.copy(alpha = 0.3f)),
+                            modifier = Modifier.size(54.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text("💬", fontSize = 26.sp)
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(14.dp))
+                        Text(
+                            text = "${activeProject?.name ?: "Continuum"} AI Pair Programmer",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimary
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "프로젝트에 대한 질문, 코드 작성 및 리팩토링 작업을 대화로 요청하세요.",
+                            fontSize = 12.sp,
+                            color = TextSecondary,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
+                    }
                 }
             }
 
@@ -691,104 +710,6 @@ fun ChatScreen(
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
-            }
-        }
-    }
-}
-
-@Composable
-private fun ProjectStandbyCard(
-    project: ProjectInfo?,
-    onQuickPrompt: (String) -> Unit
-) {
-    val name = project?.name ?: "deartalk-ai"
-    val branch = project?.currentBranch ?: "main"
-    val cleanStatus = if (project?.isClean == true) "Clean (0 unstaged)" else "Modified"
-
-    Card(
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = SurfaceCard),
-        modifier = Modifier
-            .fillMaxWidth()
-            .border(1.dp, CardBorder, RoundedCornerShape(14.dp))
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(text = "📂", fontSize = 18.sp)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = name,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp,
-                        color = TextPrimary
-                    )
-                }
-
-                Surface(
-                    shape = RoundedCornerShape(6.dp),
-                    color = if (project?.isClean == true) PassGreen.copy(alpha = 0.15f) else WarningYellow.copy(alpha = 0.15f)
-                ) {
-                    Text(
-                        text = cleanStatus,
-                        color = if (project?.isClean == true) PassGreen else WarningYellow,
-                        fontSize = 11.sp,
-                        fontFamily = FontFamily.Monospace,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = "Branch: $branch  •  Target Git Workspace",
-                color = TextSecondary,
-                fontSize = 12.sp,
-                fontFamily = FontFamily.Monospace
-            )
-
-            Spacer(modifier = Modifier.height(10.dp))
-            HorizontalDivider(color = CardBorder, thickness = 0.5.dp)
-            Spacer(modifier = Modifier.height(10.dp))
-
-            Text(
-                text = "💡 프로젝트 준비 완료. 하단에 프롬프트를 입력하면 SkyBrain 5대 렌즈 평가 후 임시 브랜치(ai/*)에서 변경사항이 생성됩니다.",
-                color = TextSecondary,
-                fontSize = 12.sp,
-                lineHeight = 17.sp
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Quick Prompt Chips
-            Text(
-                text = "추천 빠른 작업:",
-                fontSize = 11.sp,
-                color = TextMuted,
-                fontWeight = FontWeight.Medium
-            )
-            Spacer(modifier = Modifier.height(6.dp))
-
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
-                SuggestionChip(
-                    onClick = { onQuickPrompt("코드 품질 및 보안을 위한 5대 렌즈 종합 진단을 수행해 줘") },
-                    label = { Text("✨ 5대 렌즈 진단", fontSize = 11.sp, color = TextPrimary) },
-                    colors = SuggestionChipDefaults.suggestionChipColors(containerColor = IDETagBg),
-                    border = SuggestionChipDefaults.suggestionChipBorder(borderColor = CardBorder, enabled = true)
-                )
-
-                SuggestionChip(
-                    onClick = { onQuickPrompt("프로젝트 빌드 및 단위 테스트를 검증해 줘") },
-                    label = { Text("📱 빌드 검증", fontSize = 11.sp, color = TextPrimary) },
-                    colors = SuggestionChipDefaults.suggestionChipColors(containerColor = IDETagBg),
-                    border = SuggestionChipDefaults.suggestionChipBorder(borderColor = CardBorder, enabled = true)
-                )
             }
         }
     }

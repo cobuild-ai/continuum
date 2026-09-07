@@ -116,39 +116,93 @@ def _extract_project_description(project_dir: Path) -> str:
     return "Managed Workspace Project"
 
 
-def discover_projects(workspace_root: Path) -> List[ProjectInfo]:
-    """Scan and return all production projects under workspace."""
-    projects: List[ProjectInfo] = []
-    scan_dir = workspace_root / "01-production" if (workspace_root / "01-production").exists() else workspace_root
-    if not scan_dir.exists():
-        return projects
+from vibe_server.core.chat_history_manager import ChatHistoryManager
+from vibe_server.core.models import ChatMessageItem
 
-    for item in sorted(scan_dir.iterdir()):
-        if item.is_dir() and not item.name.startswith((".", "__")):
-            is_git = (item / ".git").exists()
+
+def discover_projects(workspace_root: Path) -> List[ProjectInfo]:
+    """
+    Recursively scans and auto-detects all valid Git repositories (.git)
+    within workspace_root and neighboring tiers, mapping them as first-class projects.
+    """
+    projects: List[ProjectInfo] = []
+    seen_paths = set()
+
+    # Candidate directories to scan
+    scan_roots = []
+    if workspace_root.exists():
+        scan_roots.append(workspace_root)
+    # If workspace_root is e.g. 01-production, also scan sibling tiers under OSSProject
+    if workspace_root.parent.exists() and workspace_root.parent != workspace_root:
+        for sibling in workspace_root.parent.iterdir():
+            if sibling.is_dir() and sibling.name.startswith(("01-", "02-", "03-")):
+                if sibling not in scan_roots:
+                    scan_roots.append(sibling)
+
+    ignored_names = {".git", ".venv", "venv", ".idea", "build", "node_modules", "dist", "__pycache__", ".gradle"}
+
+    for root in scan_roots:
+        # Check if the root itself is a git repo
+        candidate_dirs = [root]
+        # Check direct subdirectories
+        try:
+            for item in sorted(root.iterdir()):
+                if item.is_dir() and item.name not in ignored_names and not item.name.startswith("."):
+                    candidate_dirs.append(item)
+        except Exception:
+            pass
+
+        for c_dir in candidate_dirs:
+            resolved_str = str(c_dir.resolve())
+            if resolved_str in seen_paths:
+                continue
+
+            is_git = (c_dir / ".git").exists()
+            if not is_git and c_dir == root:
+                # Top level non-git directory is skipped
+                continue
+
+            seen_paths.add(resolved_str)
             branch = "main"
             is_clean = True
+
             if is_git:
                 try:
-                    res = subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=item, capture_output=True, text=True)
+                    res = subprocess.run(
+                        ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+                        cwd=c_dir,
+                        capture_output=True,
+                        text=True,
+                        timeout=2.0
+                    )
                     if res.returncode == 0 and res.stdout.strip():
                         branch = res.stdout.strip()
-                    status_res = subprocess.run(["git", "status", "--porcelain"], cwd=item, capture_output=True, text=True)
+                    status_res = subprocess.run(
+                        ["git", "status", "--porcelain"],
+                        cwd=c_dir,
+                        capture_output=True,
+                        text=True,
+                        timeout=2.0
+                    )
                     if status_res.returncode == 0:
                         is_clean = len(status_res.stdout.strip()) == 0
                 except Exception:
                     pass
 
-            desc = _extract_project_description(item)
+            desc = _extract_project_description(c_dir)
+            # Display name disambiguation if needed
+            tier_prefix = f"[{c_dir.parent.name}] " if c_dir.parent.name.startswith(("01-", "02-", "03-")) else ""
+            display_name = f"{tier_prefix}{c_dir.name}" if tier_prefix and c_dir.name in [p.name for p in projects] else c_dir.name
 
             projects.append(ProjectInfo(
-                name=item.name,
-                path=str(item.resolve()),
+                name=display_name,
+                path=resolved_str,
                 current_branch=branch,
                 is_git=is_git,
                 is_clean=is_clean,
                 description=desc
             ))
+
     return projects
 
 
@@ -237,6 +291,9 @@ def chat_with_agent(req: ChatRequest):
     """
     target_path = Path(req.target_repo_path or active_project_path)
     
+    # Record incoming user message to persistent history
+    ChatHistoryManager.append_message(str(target_path), req.message, is_user=True)
+
     # 1. On-Demand 5-Lens Diagnostic: ONLY when explicitly requested by user
     if conv_agent.is_lens_audit_intent(req.message):
         task_id = str(uuid.uuid4())[:8]
@@ -256,20 +313,19 @@ def chat_with_agent(req: ChatRequest):
             "id": task_id,
             "prompt": req.message,
             "state_machine": TaskStateMachine(TaskState.AWAITING_DESIGN_APPROVAL),
-            "state": TaskState.AWAITING_DESIGN_APPROVAL,
+            "target_repo_path": str(target_path),
             "branch_name": f"{settings.ai_branch_prefix}{task_id}",
             "lens_report": report,
             "diff_summary": None,
             "verification_report": None,
-            "error_message": None,
-            "created_at": datetime.now(timezone.utc),
-            "updated_at": datetime.now(timezone.utc),
-            "target_repo_path": str(target_path),
-            "base_branch": "main"
+            "created_at": task_res.created_at,
+            "updated_at": task_res.updated_at
         }
         tasks_db[task_id] = task_data
+        reply_msg = f"🔍 **[{target_path.name}]** 5대 렌즈 정적 분석이 완료되었습니다. 하단 진단 보고서를 확인해주세요."
+        ChatHistoryManager.append_message(str(target_path), reply_msg, is_user=False, task=task_res)
         return ChatResponse(
-            reply=f"🔍 **[{target_path.name}]** 요청하신 5대 렌즈 실시간 정적 분석을 완료했습니다. (종합 점수: {report.average_score}점)",
+            reply=reply_msg,
             is_task=True,
             task=task_res
         )
@@ -298,7 +354,7 @@ def chat_with_agent(req: ChatRequest):
             "state_machine": sm,
             "state": sm.current_state,
             "branch_name": branch_name,
-            "lens_report": None,  # No unsolicited lens card!
+            "lens_report": None,
             "diff_summary": diff_summary,
             "verification_report": ver_report,
             "error_message": None,
@@ -316,29 +372,43 @@ def chat_with_agent(req: ChatRequest):
             diff_summary.total_deletions
         )
         
+        task_obj = TaskResponse(
+            id=task_id,
+            prompt=req.message,
+            state=sm.current_state,
+            branch_name=branch_name,
+            lens_report=None,
+            diff_summary=diff_summary,
+            verification_report=ver_report,
+            created_at=task_data["created_at"],
+            updated_at=task_data["updated_at"]
+        )
+        reply_msg = f"🛠️ **[{target_path.name}]** 코드 구현 및 실측 테스트 검증이 완료되었습니다. 변경사항(Diff)을 검토 후 승인(Squash Merge)해주세요."
+        ChatHistoryManager.append_message(str(target_path), reply_msg, is_user=False, task=task_obj)
         return ChatResponse(
-            reply=f"🛠️ **[{target_path.name}]** 코드 구현 및 실측 테스트 검증이 완료되었습니다. 변경사항(Diff)을 검토 후 승인(Squash Merge)해주세요.",
+            reply=reply_msg,
             is_task=True,
-            task=TaskResponse(
-                id=task_id,
-                prompt=req.message,
-                state=sm.current_state,
-                branch_name=branch_name,
-                lens_report=None,
-                diff_summary=diff_summary,
-                verification_report=ver_report,
-                created_at=task_data["created_at"],
-                updated_at=task_data["updated_at"]
-            )
+            task=task_obj
         )
     else:
         # Conversational Q&A / architecture dialog
         reply_text = conv_agent.chat(target_path, req.message, req.conversation_history)
+        ChatHistoryManager.append_message(str(target_path), reply_text, is_user=False, task=None)
         return ChatResponse(
             reply=reply_text,
             is_task=False,
             task=None
         )
+
+
+@app.get("/api/v1/chat/history", response_model=List[ChatMessageItem], tags=["Chat"])
+def get_chat_history(project_path: Optional[str] = None):
+    """
+    Fetch persistent conversation history for the given or active project.
+    Provides instant continuity when switching projects or reopening the app.
+    """
+    target = project_path or active_project_path
+    return ChatHistoryManager.get_history(target)
 
 
 @app.post("/api/v1/tasks", response_model=TaskResponse, status_code=status.HTTP_201_CREATED, tags=["Tasks"])
