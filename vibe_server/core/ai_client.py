@@ -1,10 +1,12 @@
-"""Unified AI Engine Client supporting Gemini Flash and local SkyBrain (Qwen 3.8)."""
 import json
 import logging
 import os
 import re
+import socket
+import time
 import urllib.request
 from typing import Dict, List, Optional
+from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +23,38 @@ GEMINI_FLASH_CANDIDATES = [
 
 CLAUDE_API_URL = "https://api.anthropic.com/v1/messages"
 OPENAI_API_URL = "https://api.openai.com/v1/chat/completions"
+
+
+class SkyBrainCircuitBreaker:
+    """
+    Active Connection Manager & Circuit Breaker for Local SkyBrain SLM.
+    Uses ultra-fast 150ms socket probing with a 5s TTL cache so runtime calls
+    never wait on timed-out HTTP connections when the daemon is offline.
+    """
+    _last_checked: float = 0.0
+    _is_healthy: bool = False
+    _ttl_seconds: float = 5.0
+
+    @classmethod
+    def is_alive(cls, url: str) -> bool:
+        now = time.time()
+        if now - cls._last_checked < cls._ttl_seconds:
+            return cls._is_healthy
+
+        cls._last_checked = now
+        parsed = urlparse(url)
+        host = parsed.hostname or "127.0.0.1"
+        port = parsed.port or (443 if parsed.scheme == "https" else 8000)
+
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.settimeout(0.15)
+                res = s.connect_ex((host, port))
+                cls._is_healthy = (res == 0)
+        except Exception:
+            cls._is_healthy = False
+
+        return cls._is_healthy
 
 
 class AIEngineClient:
@@ -125,6 +159,13 @@ class AIEngineClient:
                 pass
         return ""
 
+    @property
+    def is_skybrain_available(self) -> bool:
+        """Determines if SkyBrain is both enabled and actively reachable with zero-wait socket probing."""
+        if not self.skybrain_enabled:
+            return False
+        return SkyBrainCircuitBreaker.is_alive(self.skybrain_url)
+
     def generate_chat(self, system_prompt: str, user_prompt: str, history: Optional[List[Dict[str, str]]] = None) -> str:
         """Generates conversational pair-programming responses."""
         if self.provider == "gemini" and self.gemini_api_key:
@@ -140,9 +181,9 @@ class AIEngineClient:
             if reply:
                 return reply
 
-        # Fallback to local SkyBrain ONLY IF enabled
-        if self.skybrain_enabled:
-            logger.info("Falling back to local SkyBrain...")
+        # Fallback to local SkyBrain ONLY IF enabled AND actively online (Circuit Breaker verified)
+        if self.is_skybrain_available:
+            logger.info("Local SkyBrain connection verified online. Routing fallback...")
             return self._call_skybrain_chat(system_prompt, user_prompt, history)
 
         clean_msg = user_prompt.strip()
@@ -167,8 +208,8 @@ class AIEngineClient:
             if files:
                 return files
 
-        if self.skybrain_enabled:
-            logger.info("Falling back to local SkyBrain for code synthesis...")
+        if self.is_skybrain_available:
+            logger.info("Local SkyBrain connection verified online for code synthesis...")
             return self._call_skybrain_code(prompt)
 
         return {}

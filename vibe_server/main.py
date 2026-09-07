@@ -14,6 +14,7 @@ from fastapi.responses import StreamingResponse
 from rich.console import Console
 from rich.table import Table
 
+from vibe_server.core.ai_client import SkyBrainCircuitBreaker
 from vibe_server.core.config import settings
 from vibe_server.core.conversational_agent import ConversationalAgent
 from vibe_server.core.diagnostics import CheckStatus, PreflightAssessor
@@ -60,6 +61,7 @@ def health_check():
             "model": settings.active_model_name,
             "custom_gateway": bool(settings.custom_api_url),
             "skybrain_enabled": settings.skybrain_enabled,
+            "skybrain_online": SkyBrainCircuitBreaker.is_alive(settings.skybrain_url) if settings.skybrain_enabled else False,
             "skybrain_model": settings.skybrain_model if settings.skybrain_enabled else None
         },
         "timestamp": datetime.now(timezone.utc).isoformat()
