@@ -16,8 +16,10 @@ local.properties
 .idea/
 *.iml
 
-# Environment & Secrets
+# Environment & Secrets (Never commit secrets)
 .env
+.env.*
+!.env.example
 *.pem
 *.key
 *.p12

@@ -57,8 +57,9 @@ def health_check():
         "service": settings.app_name,
         "ai_engine": {
             "provider": settings.ai_provider,
-            "model": settings.gemini_model,
-            "skybrain_model": settings.skybrain_model
+            "model": settings.active_model_name,
+            "skybrain_enabled": settings.skybrain_enabled,
+            "skybrain_model": settings.skybrain_model if settings.skybrain_enabled else None
         },
         "timestamp": datetime.now(timezone.utc).isoformat()
     }
@@ -228,21 +229,104 @@ def chat_with_agent(req: ChatRequest):
     """
     Conversational Vibe Coding endpoint (Antigravity-style mobile pair programming).
     - If inquiry / question / discussion: returns AI markdown reply directly.
-    - If actionable code task: creates Task, runs 5-Lens, and returns task for approval.
+    - If on-demand 5-Lens audit requested: runs real project 5-Lens static analysis.
+    - If actionable code task: directly creates task branch, executes in sandbox, verifies with real tests, and presents diff for merge approval.
     """
     target_path = Path(req.target_repo_path or active_project_path)
     
-    # Check if user intent is an action-oriented code task
-    if conv_agent.is_code_task_intent(req.message):
-        task_res = create_task(TaskCreateRequest(
+    # 1. On-Demand 5-Lens Diagnostic: ONLY when explicitly requested by user
+    if conv_agent.is_lens_audit_intent(req.message):
+        task_id = str(uuid.uuid4())[:8]
+        report = lens_engine.evaluate_project(target_path)
+        task_res = TaskResponse(
+            id=task_id,
             prompt=req.message,
-            target_repo_path=str(target_path),
-            base_branch="main"
-        ))
+            state=TaskState.AWAITING_DESIGN_APPROVAL,
+            branch_name=f"{settings.ai_branch_prefix}{task_id}",
+            lens_report=report,
+            diff_summary=None,
+            verification_report=None,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc)
+        )
+        task_data = {
+            "id": task_id,
+            "prompt": req.message,
+            "state_machine": TaskStateMachine(TaskState.AWAITING_DESIGN_APPROVAL),
+            "state": TaskState.AWAITING_DESIGN_APPROVAL,
+            "branch_name": f"{settings.ai_branch_prefix}{task_id}",
+            "lens_report": report,
+            "diff_summary": None,
+            "verification_report": None,
+            "error_message": None,
+            "created_at": datetime.now(timezone.utc),
+            "updated_at": datetime.now(timezone.utc),
+            "target_repo_path": str(target_path),
+            "base_branch": "main"
+        }
+        tasks_db[task_id] = task_data
         return ChatResponse(
-            reply=f"🛠️ **[{target_path.name}]** 코드 구현 태스크가 접수되었습니다. SkyBrain 5-Lens 정합성 검토를 완료했습니다. 검토 후 실행을 승인해주세요.",
+            reply=f"🔍 **[{target_path.name}]** 요청하신 5대 렌즈 실시간 정적 분석을 완료했습니다. (종합 점수: {report.average_score}점)",
             is_task=True,
             task=task_res
+        )
+
+    # 2. Actionable Code Task -> Direct execution, test verification & Diff presentation!
+    elif conv_agent.is_code_task_intent(req.message):
+        task_id = str(uuid.uuid4())[:8]
+        sm = TaskStateMachine(TaskState.SANDBOX_EXECUTING)
+        branch_name = f"{settings.ai_branch_prefix}{task_id}"
+        has_git = (target_path / ".git").exists()
+        
+        if not has_git:
+            ProjectProvisioner.ensure_git_repository(target_path)
+            
+        git_mgr = GitWorkspaceManager(target_path, branch_prefix=settings.ai_branch_prefix)
+        git_mgr.create_task_branch(task_id, base_branch="main")
+        modified_files, ver_report = code_synth.execute_and_verify(target_path, req.message, task_id)
+        diff_summary = git_mgr.get_diff(task_id, base_branch="main")
+        
+        sm.transition_to(TaskState.DIFF_READY)
+        sm.transition_to(TaskState.AWAITING_MERGE_APPROVAL)
+        
+        task_data = {
+            "id": task_id,
+            "prompt": req.message,
+            "state_machine": sm,
+            "state": sm.current_state,
+            "branch_name": branch_name,
+            "lens_report": None,  # No unsolicited lens card!
+            "diff_summary": diff_summary,
+            "verification_report": ver_report,
+            "error_message": None,
+            "created_at": datetime.now(timezone.utc),
+            "updated_at": datetime.now(timezone.utc),
+            "target_repo_path": str(target_path),
+            "base_branch": "main"
+        }
+        tasks_db[task_id] = task_data
+        
+        notifier.notify_diff_ready(
+            task_id,
+            diff_summary.total_files_changed,
+            diff_summary.total_additions,
+            diff_summary.total_deletions
+        )
+        
+        return ChatResponse(
+            reply=f"🛠️ **[{target_path.name}]** 코드 구현 및 실측 테스트 검증이 완료되었습니다. 변경사항(Diff)을 검토 후 승인(Squash Merge)해주세요.",
+            is_task=True,
+            task=TaskResponse(
+                id=task_id,
+                prompt=req.message,
+                state=sm.current_state,
+                branch_name=branch_name,
+                lens_report=None,
+                diff_summary=diff_summary,
+                verification_report=ver_report,
+                created_at=task_data["created_at"],
+                updated_at=task_data["updated_at"]
+            )
         )
     else:
         # Conversational Q&A / architecture dialog

@@ -24,29 +24,36 @@ class ConversationalAgent:
                 skybrain_model=settings.skybrain_model
             )
         else:
-            self.ai_client = AIEngineClient(
-                provider=settings.ai_provider,
-                gemini_model=settings.gemini_model,
-                gemini_api_key=settings.gemini_api_key,
-                skybrain_url=settings.skybrain_url,
-                skybrain_model=settings.skybrain_model
-            )
+            self.ai_client = AIEngineClient.from_settings(settings)
+
+    def is_lens_audit_intent(self, message: str) -> bool:
+        """
+        Determines whether the user explicitly requests a 5-Lens quality & integrity audit.
+        Only explicit requests (e.g. '5대 렌즈 진단', '코드 진단', '정적 분석') trigger this.
+        """
+        clean = message.strip().lower()
+        lens_patterns = [
+            r"(5대\s*렌즈|five-?lens).*(진단|평가|검증|점검|분석|스캔|리뷰)",
+            r"^(5대\s*렌즈\s*진단|렌즈\s*진단|코드\s*진단|정적\s*분석)$",
+            r"(코드\s*품질\s*점검|아키텍처\s*진단|보안\s*점검)\s*(해\s*줘|진행|수행|요청)",
+            r"\b(run 5-lens|lens audit|lens check|static audit)\b",
+        ]
+        return any(re.search(p, clean) for p in lens_patterns)
 
     def is_code_task_intent(self, message: str) -> bool:
         """
         Determines whether the user's input is an action-oriented code task
-        (file creation, bug fix, refactor, feature implement) or a conversational inquiry/discussion.
+        (file creation, bug fix, refactor, feature implement, test run) or a conversational inquiry/discussion.
         """
         clean = message.strip().lower()
         
         # 1. Action-oriented code task verbs and file mentions (Highest priority)
         task_verbs = [
             r"(만들어|생성해|추가해|구현해|짜줘|작성해|개발해|작업해|바꿔|수정해|고쳐|리팩토링)",
-            r"(진단|검증|평가|점검|스캔|테스트|빌드).*(해\s*줘|하자|하라|진행|수행|실행|부탁)",
-            r"(진단|검증|평가|점검|스캔|테스트|빌드)\s*(해|하라|하자|요청)",
-            r"(5대\s*렌즈|five-?lens).*(진단|평가|검증|수행|실행|해\s*줘|돌려)",
+            r"(검증|테스트|빌드).*(해\s*줘|하자|하라|진행|수행|실행|부탁)",
+            r"(검증|테스트|빌드)\s*(해|하라|하자|요청)",
             r"\b(create|add|implement|write|build|fix|refactor|delete|remove|generate|update|make)\b",
-            r"\b(diagnose|evaluate|audit|test|inspect|verify|run)\b",
+            r"\b(test|inspect|verify|run tests)\b",
             r"\b[a-zA-Z0-9_\-]+\.(py|kt|java|js|ts|html|css|json|sh|md)\b",  # mentions a file
         ]
         for pattern in task_verbs:

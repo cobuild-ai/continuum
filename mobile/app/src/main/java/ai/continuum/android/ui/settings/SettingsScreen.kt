@@ -32,8 +32,6 @@ fun SettingsScreen(
     var portInput by remember(state.serverPort) { mutableStateOf(state.serverPort.toString()) }
     var repoPathInput by remember(state.targetRepoPath) { mutableStateOf(state.targetRepoPath) }
     var branchInput by remember(state.baseBranch) { mutableStateOf(state.baseBranch) }
-    var geminiKeyInput by remember(state.geminiApiKey) { mutableStateOf(state.geminiApiKey) }
-    var geminiModelInput by remember(state.geminiModel) { mutableStateOf(state.geminiModel) }
 
     Scaffold(
         topBar = {
@@ -182,63 +180,65 @@ fun SettingsScreen(
                 }
             }
 
-            // Section 4: Gemini Cloud Engine
+            // Section 4: Server AI Engine Status (View Only)
             item {
-                SettingsSectionCard(title = "🤖 Gemini Cloud AI Engine") {
+                SettingsSectionCard(title = "🤖 Server AI Engine (View Only)") {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text(
-                            text = "Active Cloud Model",
-                            fontSize = 13.sp,
-                            color = TextPrimary,
-                            fontWeight = FontWeight.SemiBold
-                        )
+                        Column {
+                            Text(
+                                text = "Active Cloud Provider",
+                                fontSize = 12.sp,
+                                color = TextSecondary
+                            )
+                            Text(
+                                text = state.serverAiProvider.uppercase(),
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = TextPrimary
+                            )
+                        }
                         Surface(
                             shape = RoundedCornerShape(6.dp),
                             color = PrimaryCyan.copy(alpha = 0.15f),
                             border = androidx.compose.foundation.BorderStroke(0.5.dp, PrimaryCyan)
                         ) {
                             Text(
-                                text = "⚡ Gemini 3.8 Flash",
-                                fontSize = 11.sp,
+                                text = "⚡ ${state.serverAiModel}",
+                                fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = PrimaryCyan,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                             )
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
 
-                    OutlinedTextField(
-                        value = geminiModelInput,
-                        onValueChange = {
-                            geminiModelInput = it
-                            viewModel.updateGeminiModel(it)
-                        },
-                        label = { Text("Model ID (Default: gemini-3.8-flash)") },
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
                         modifier = Modifier.fillMaxWidth()
-                    )
+                    ) {
+                        Text(
+                            text = "Local SkyBrain SLM",
+                            fontSize = 13.sp,
+                            color = TextPrimary
+                        )
+                        Text(
+                            text = if (state.serverSkyBrainActive) "Active (qwen3.8)" else "Disabled (Cloud Only)",
+                            fontSize = 12.sp,
+                            color = if (state.serverSkyBrainActive) PassGreen else TextMuted,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
 
                     Spacer(modifier = Modifier.height(8.dp))
-
-                    OutlinedTextField(
-                        value = geminiKeyInput,
-                        onValueChange = {
-                            geminiKeyInput = it
-                            viewModel.updateGeminiApiKey(it)
-                        },
-                        label = { Text("Gemini API Key (Optional Override)") },
-                        visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        text = "⚡ Continuum is powered by Google Gemini 3.8 Flash paired with Local SkyBrain (Qwen 3.8) Hybrid Routing.",
+                        text = "🔒 AI 엔진(Gemini, Claude, Codex 등) 및 API Key는 서버의 `.env` 파일에서 안전하게 설정되며 클라이언트는 자동 감지하여 표시합니다.",
                         fontSize = 11.sp,
                         color = TextMuted
                     )

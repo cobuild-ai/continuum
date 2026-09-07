@@ -23,13 +23,7 @@ class CodeSynthesizer:
         ai_client: Optional[AIEngineClient] = None,
         autonomous_loop: Optional[AutonomousAgentLoop] = None
     ):
-        self.ai_client = ai_client or AIEngineClient(
-            provider=settings.ai_provider,
-            gemini_model=settings.gemini_model,
-            gemini_api_key=settings.gemini_api_key,
-            skybrain_url=settings.skybrain_url,
-            skybrain_model=settings.skybrain_model
-        )
+        self.ai_client = ai_client or AIEngineClient.from_settings(settings)
         self.autonomous_loop = autonomous_loop or AutonomousAgentLoop(ai_client=self.ai_client)
 
     def execute_and_verify(self, repo_path: Path, prompt: str, task_id: str) -> Tuple[List[str], VerificationReport]:

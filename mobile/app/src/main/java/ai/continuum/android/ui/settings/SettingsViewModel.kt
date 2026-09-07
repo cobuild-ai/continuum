@@ -22,8 +22,9 @@ data class SettingsUiState(
     val aiConductEnabled: Boolean = true,
     val passThreshold: Int = 70,
     val vibrationEnabled: Boolean = true,
-    val geminiApiKey: String = "",
-    val geminiModel: String = ContinuumSettings.DEFAULT_GEMINI_MODEL,
+    val serverAiProvider: String = "gemini",
+    val serverAiModel: String = "gemini-3.8-flash",
+    val serverSkyBrainActive: Boolean = false,
     val connectionStatus: String = "Not Tested",
     val isTestingConnection: Boolean = false
 )
@@ -44,21 +45,13 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             perfEnabled = ContinuumSettings.isLensEnabled(context, "performance"),
             aiConductEnabled = ContinuumSettings.isLensEnabled(context, "ai_conduct"),
             passThreshold = ContinuumSettings.getPassThresholdScore(context),
-            vibrationEnabled = ContinuumSettings.isVibrationEnabled(context),
-            geminiApiKey = ContinuumSettings.getGeminiApiKey(context),
-            geminiModel = ContinuumSettings.getGeminiModel(context)
+            vibrationEnabled = ContinuumSettings.isVibrationEnabled(context)
         )
     )
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
 
-    fun updateGeminiApiKey(key: String) {
-        ContinuumSettings.setGeminiApiKey(context, key)
-        _uiState.value = _uiState.value.copy(geminiApiKey = key)
-    }
-
-    fun updateGeminiModel(model: String) {
-        ContinuumSettings.setGeminiModel(context, model)
-        _uiState.value = _uiState.value.copy(geminiModel = model)
+    init {
+        testConnection()
     }
 
     fun updateServerConfig(host: String, port: Int) {
@@ -66,6 +59,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         ContinuumSettings.setServerPort(context, port)
         NetworkModule.setBaseUrl("http://$host:$port")
         _uiState.value = _uiState.value.copy(serverHost = host, serverPort = port)
+        testConnection()
     }
 
     fun updateTargetRepo(path: String, branch: String) {
@@ -102,9 +96,19 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             try {
                 val res = NetworkModule.apiService.checkHealth()
                 if (res.isSuccessful) {
+                    val body = res.body()
+                    @Suppress("UNCHECKED_CAST")
+                    val aiEngine = body?.get("ai_engine") as? Map<String, Any>
+                    val provider = aiEngine?.get("provider")?.toString() ?: "gemini"
+                    val model = aiEngine?.get("model")?.toString() ?: "gemini-3.8-flash"
+                    val skybrainEnabled = aiEngine?.get("skybrain_enabled") as? Boolean ?: false
+
                     _uiState.value = _uiState.value.copy(
                         isTestingConnection = false,
-                        connectionStatus = "Connected (Vibe Server Healthy)"
+                        connectionStatus = "Connected (Vibe Server Healthy)",
+                        serverAiProvider = provider,
+                        serverAiModel = model,
+                        serverSkyBrainActive = skybrainEnabled
                     )
                 } else {
                     _uiState.value = _uiState.value.copy(

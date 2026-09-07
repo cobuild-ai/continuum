@@ -19,12 +19,38 @@ class Settings(BaseSettings):
     docker_image: str = "continuum-sandbox:latest"
     sandbox_timeout_seconds: int = 300
     
-    # AI Engine (Hybrid Routing: Gemini Flash & SkyBrain SLM)
-    ai_provider: str = "gemini"  # "gemini" or "skybrain"
+    # AI Engine Settings (Controlled via .env without code modifications)
+    # Available providers: "gemini" | "claude" | "codex" | "openai" | "skybrain"
+    ai_provider: str = "gemini"
+    
+    # Gemini Configuration
     gemini_model: str = "gemini-3.8-flash"
     gemini_api_key: str = ""
+
+    # Claude Configuration
+    claude_model: str = "claude-3-7-sonnet-20250219"
+    claude_api_key: str = ""
+
+    # OpenAI / Codex Configuration
+    openai_model: str = "gpt-4o"
+    openai_api_key: str = ""
+
+    # Local SkyBrain SLM (Optional: set to False if SkyBrain daemon is not running)
+    skybrain_enabled: bool = False
     skybrain_url: str = "http://127.0.0.1:8000/v1/chat/completions"
     skybrain_model: str = "qwen3.8"
+
+    @property
+    def active_model_name(self) -> str:
+        if self.ai_provider == "gemini":
+            return self.gemini_model
+        elif self.ai_provider == "claude":
+            return self.claude_model
+        elif self.ai_provider in ("codex", "openai"):
+            return self.openai_model
+        elif self.ai_provider == "skybrain":
+            return self.skybrain_model
+        return self.gemini_model
 
     # Notification
     fcm_enabled: bool = False

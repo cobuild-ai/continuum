@@ -19,30 +19,78 @@ GEMINI_FLASH_CANDIDATES = [
     "gemini-flash-lite-latest",
 ]
 
+CLAUDE_API_URL = "https://api.anthropic.com/v1/messages"
+OPENAI_API_URL = "https://api.openai.com/v1/chat/completions"
+
 
 class AIEngineClient:
-    """Unified client orchestrating Cloud Gemini Flash and Local SkyBrain SLM."""
+    """Unified client orchestrating Cloud LLMs (Gemini, Claude, Codex/OpenAI) and optional Local SkyBrain SLM."""
 
     def __init__(
         self,
-        provider: str = "gemini",  # "gemini" or "skybrain"
+        provider: str = "gemini",  # "gemini" | "claude" | "codex" | "openai" | "skybrain"
         gemini_model: str = "gemini-3.8-flash",
         gemini_api_key: Optional[str] = None,
+        claude_model: str = "claude-3-7-sonnet-20250219",
+        claude_api_key: Optional[str] = None,
+        openai_model: str = "gpt-4o",
+        openai_api_key: Optional[str] = None,
+        skybrain_enabled: bool = False,
         skybrain_url: str = SKYBRAIN_URL,
         skybrain_model: str = "qwen3.8"
     ):
         self.provider = provider
         self.gemini_model = gemini_model
-        self.gemini_api_key = self._resolve_api_key(gemini_api_key)
+        self.gemini_api_key = self._resolve_api_key("GEMINI_API_KEY", gemini_api_key)
+        self.claude_model = claude_model
+        self.claude_api_key = self._resolve_api_key("ANTHROPIC_API_KEY", claude_api_key)
+        self.openai_model = openai_model
+        self.openai_api_key = self._resolve_api_key("OPENAI_API_KEY", openai_api_key)
+        
+        self.skybrain_enabled = skybrain_enabled
         self.skybrain_url = skybrain_url
         self.skybrain_model = skybrain_model
-        logger.info(f"AIEngineClient initialized: provider={self.provider}, model={self.gemini_model}, has_key={bool(self.gemini_api_key)}")
+
+        logger.info(
+            f"AIEngineClient initialized: provider={self.provider}, "
+            f"model={self.active_model}, skybrain_enabled={self.skybrain_enabled}"
+        )
+
+    @classmethod
+    def from_settings(cls, s=None) -> "AIEngineClient":
+        """Factory method building client directly from application Settings."""
+        if s is None:
+            from vibe_server.core.config import settings as s
+        return cls(
+            provider=s.ai_provider,
+            gemini_model=s.gemini_model,
+            gemini_api_key=s.gemini_api_key,
+            claude_model=s.claude_model,
+            claude_api_key=s.claude_api_key,
+            openai_model=s.openai_model,
+            openai_api_key=s.openai_api_key,
+            skybrain_enabled=s.skybrain_enabled,
+            skybrain_url=s.skybrain_url,
+            skybrain_model=s.skybrain_model
+        )
+
+    @property
+    def active_model(self) -> str:
+        if self.provider == "gemini":
+            return self.gemini_model
+        elif self.provider == "claude":
+            return self.claude_model
+        elif self.provider in ("codex", "openai"):
+            return self.openai_model
+        elif self.provider == "skybrain":
+            return self.skybrain_model
+        return self.gemini_model
 
     @staticmethod
-    def _resolve_api_key(explicit_key: Optional[str] = None) -> str:
+    def _resolve_api_key(env_var_name: str, explicit_key: Optional[str] = None) -> str:
         if explicit_key and explicit_key.strip():
             return explicit_key.strip()
-        env_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("CONTINUUM_GEMINI_API_KEY", "")
+        env_key = os.environ.get(env_var_name) or os.environ.get(f"CONTINUUM_{env_var_name}", "")
         if env_key and env_key.strip():
             return env_key.strip()
         zshrc_path = os.path.expanduser("~/.zshrc")
@@ -50,7 +98,7 @@ class AIEngineClient:
             try:
                 with open(zshrc_path, "r", encoding="utf-8") as f:
                     content = f.read()
-                match = re.search(r'export\s+GEMINI_API_KEY=["\']?([^"\'\s]+)["\']?', content)
+                match = re.search(rf'export\s+{env_var_name}=["\']?([^"\'\s]+)["\']?', content)
                 if match:
                     return match.group(1).strip()
             except Exception:
@@ -63,10 +111,26 @@ class AIEngineClient:
             reply = self._call_gemini_chat(system_prompt, user_prompt, history)
             if reply:
                 return reply
-            logger.info("Falling back to local SkyBrain...")
+        elif self.provider == "claude" and self.claude_api_key:
+            reply = self._call_claude_chat(system_prompt, user_prompt, history)
+            if reply:
+                return reply
+        elif self.provider in ("codex", "openai") and self.openai_api_key:
+            reply = self._call_openai_chat(system_prompt, user_prompt, history)
+            if reply:
+                return reply
 
-        # SkyBrain fallback
-        return self._call_skybrain_chat(system_prompt, user_prompt, history)
+        # Fallback to local SkyBrain ONLY IF enabled
+        if self.skybrain_enabled:
+            logger.info("Falling back to local SkyBrain...")
+            return self._call_skybrain_chat(system_prompt, user_prompt, history)
+
+        clean_msg = user_prompt.strip()
+        return (
+            f"⚠️ **Continuum AI Engine 알림**: {self.provider.upper()} ({self.active_model}) 클라우드 요청 처리 중 일시적인 지연이 발생했습니다.\n\n"
+            f"- 요청 내용: **'{clean_msg[:40]}'**\n"
+            f"- 잠시 후 다시 전송해 주시거나 `.env`의 API Key를 확인해 주세요."
+        )
 
     def generate_code_files(self, prompt: str) -> Dict[str, str]:
         """Generates code files dictionary {rel_path: content}."""
@@ -74,9 +138,20 @@ class AIEngineClient:
             files = self._call_gemini_code(prompt)
             if files:
                 return files
-            logger.info("Falling back to local SkyBrain for code synthesis...")
+        elif self.provider == "claude" and self.claude_api_key:
+            files = self._call_claude_code(prompt)
+            if files:
+                return files
+        elif self.provider in ("codex", "openai") and self.openai_api_key:
+            files = self._call_openai_code(prompt)
+            if files:
+                return files
 
-        return self._call_skybrain_code(prompt)
+        if self.skybrain_enabled:
+            logger.info("Falling back to local SkyBrain for code synthesis...")
+            return self._call_skybrain_code(prompt)
+
+        return {}
 
     # ------------------ Gemini Implementation ------------------
     def _call_gemini_chat(self, system_prompt: str, user_prompt: str, history: Optional[List[Dict[str, str]]] = None) -> Optional[str]:
@@ -153,6 +228,125 @@ class AIEngineClient:
                 if str(code) in ["429", "503"]:
                     time.sleep(1.0)
 
+        return {}
+
+    # ------------------ Claude Implementation ------------------
+    def _call_claude_chat(self, system_prompt: str, user_prompt: str, history: Optional[List[Dict[str, str]]] = None) -> Optional[str]:
+        messages = []
+        if history:
+            for item in history[-4:]:
+                messages.append({"role": item.get("role", "user"), "content": item.get("content", "")})
+        messages.append({"role": "user", "content": user_prompt})
+
+        payload = {
+            "model": self.claude_model,
+            "system": system_prompt,
+            "messages": messages,
+            "max_tokens": 1024,
+            "temperature": 0.4
+        }
+        headers = {
+            "Content-Type": "application/json",
+            "x-api-key": self.claude_api_key,
+            "anthropic-version": "2023-06-01"
+        }
+        try:
+            req = urllib.request.Request(CLAUDE_API_URL, data=json.dumps(payload).encode("utf-8"), headers=headers)
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                for block in data.get("content", []):
+                    if block.get("type") == "text":
+                        return block.get("text", "").strip()
+        except Exception as e:
+            logger.warning(f"Claude chat call failed: {e}")
+        return None
+
+    def _call_claude_code(self, prompt: str) -> Dict[str, str]:
+        system_instruction = (
+            "You are an expert autonomous software engineer. "
+            "Given a user coding prompt, generate required code files. "
+            "Respond ONLY with a valid JSON array of objects: "
+            '[{"path": "relative/path/to/file.ext", "content": "raw content"}].'
+        )
+        payload = {
+            "model": self.claude_model,
+            "system": system_instruction,
+            "messages": [{"role": "user", "content": prompt}],
+            "max_tokens": 4096,
+            "temperature": 0.2
+        }
+        headers = {
+            "Content-Type": "application/json",
+            "x-api-key": self.claude_api_key,
+            "anthropic-version": "2023-06-01"
+        }
+        try:
+            req = urllib.request.Request(CLAUDE_API_URL, data=json.dumps(payload).encode("utf-8"), headers=headers)
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                text = ""
+                for block in data.get("content", []):
+                    if block.get("type") == "text":
+                        text += block.get("text", "")
+                return self._parse_json_files(text, prompt)
+        except Exception as e:
+            logger.warning(f"Claude code call failed: {e}")
+        return {}
+
+    # ------------------ OpenAI / Codex Implementation ------------------
+    def _call_openai_chat(self, system_prompt: str, user_prompt: str, history: Optional[List[Dict[str, str]]] = None) -> Optional[str]:
+        messages = [{"role": "system", "content": system_prompt}]
+        if history:
+            for item in history[-4:]:
+                messages.append({"role": item.get("role", "user"), "content": item.get("content", "")})
+        messages.append({"role": "user", "content": user_prompt})
+
+        payload = {
+            "model": self.openai_model,
+            "messages": messages,
+            "max_tokens": 1024,
+            "temperature": 0.4
+        }
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.openai_api_key}"
+        }
+        try:
+            req = urllib.request.Request(OPENAI_API_URL, data=json.dumps(payload).encode("utf-8"), headers=headers)
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                return data["choices"][0]["message"]["content"].strip()
+        except Exception as e:
+            logger.warning(f"OpenAI chat call failed: {e}")
+        return None
+
+    def _call_openai_code(self, prompt: str) -> Dict[str, str]:
+        system_instruction = (
+            "You are an expert autonomous software engineer. "
+            "Output ONLY a valid JSON array of objects: "
+            '[{"path": "relative/path/to/file.ext", "content": "raw content"}].'
+        )
+        payload = {
+            "model": self.openai_model,
+            "messages": [
+                {"role": "system", "content": system_instruction},
+                {"role": "user", "content": prompt}
+            ],
+            "max_tokens": 4096,
+            "temperature": 0.2
+        }
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.openai_api_key}"
+        }
+        try:
+            req = urllib.request.Request(OPENAI_API_URL, data=json.dumps(payload).encode("utf-8"), headers=headers)
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                text = data["choices"][0]["message"]["content"]
+                return self._parse_json_files(text, prompt)
+        except Exception as e:
+            logger.warning(f"OpenAI code call failed: {e}")
         return {}
 
     # ------------------ SkyBrain Implementation ------------------

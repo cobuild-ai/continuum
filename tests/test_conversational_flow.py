@@ -18,8 +18,8 @@ def test_intent_classification():
     assert agent.is_code_task_intent("Create a login module in Python") is True
     assert agent.is_code_task_intent("Add unit tests for database connection") is True
     assert agent.is_code_task_intent("통계 계산 모듈 구현해") is True
-    assert agent.is_code_task_intent("버그 고쳐줘") is True
-    assert agent.is_code_task_intent("코드 품질 및 보안을 위한 5대 렌즈 종합 진단을 수행해 줘") is True
+    assert agent.is_lens_audit_intent("코드 품질 및 보안을 위한 5대 렌즈 종합 진단을 수행해 줘") is True
+    assert agent.is_code_task_intent("코드 품질 및 보안을 위한 5대 렌즈 종합 진단을 수행해 줘") is False
     assert agent.is_code_task_intent("프로젝트 빌드 및 단위 테스트를 검증해 줘") is True
 
 

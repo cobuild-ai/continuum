@@ -48,13 +48,7 @@ class AutonomousAgentLoop:
     """Orchestrates multi-turn ReAct execution with tool dispatch and compiler/test feedback."""
 
     def __init__(self, ai_client: Optional[AIEngineClient] = None, max_turns: int = 4):
-        self.ai_client = ai_client or AIEngineClient(
-            provider=settings.ai_provider,
-            gemini_model=settings.gemini_model,
-            gemini_api_key=settings.gemini_api_key,
-            skybrain_url=settings.skybrain_url,
-            skybrain_model=settings.skybrain_model
-        )
+        self.ai_client = ai_client or AIEngineClient.from_settings(settings)
         self.max_turns = max_turns
 
     def run(self, workspace_path: Path, prompt: str, task_id: str) -> AgentExecutionResult:

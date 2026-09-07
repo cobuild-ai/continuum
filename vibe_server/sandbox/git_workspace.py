@@ -84,8 +84,10 @@ class GitWorkspaceManager:
         self._run_git("checkout", base_branch)
         # Squash merge
         self._run_git("merge", "--squash", branch_name)
-        # Commit squashed changes
-        self._run_git("commit", "--no-verify", "-m", msg)
+        # Commit squashed changes if any
+        status = self._run_git("status", "--porcelain")
+        if status.strip():
+            self._run_git("commit", "--no-verify", "-m", msg)
         # Delete task branch
         self._run_git("branch", "-D", branch_name)
         return True
