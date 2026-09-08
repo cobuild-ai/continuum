@@ -8,7 +8,7 @@ import subprocess
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 
 class CheckStatus(str, enum.Enum):
@@ -48,7 +48,7 @@ class PreflightAssessor:
 
     def __init__(self, target_port: int = 8080, workspace_root: Optional[Path] = None):
         self.target_port = target_port
-        self.workspace_root = workspace_root or Path("/Users/smilelife/Projects/OSSProject")
+        self.workspace_root = workspace_root or Path(os.getenv("CONTINUUM_WORKSPACE_ROOT", str(Path.home() / "Projects" / "OSSProject")))
 
     def check_python_version(self) -> CheckItem:
         major, minor = sys.version_info.major, sys.version_info.minor
@@ -205,3 +205,29 @@ class PreflightAssessor:
             has_warnings=has_warnings,
             has_failures=has_failures
         )
+
+
+def check_quality_threshold(report: Any, threshold: float = 70.0) -> Tuple[bool, List[str]]:
+    """
+    Evaluates whether a 5-Lens quality report satisfies the project's quality threshold guardrail.
+    Used by mobile DiffSummaryCard and API merge gates to prevent subpar code integration.
+    Returns (passed, violations_list).
+    """
+    violations = []
+    avg_score = getattr(report, "average_score", 0.0)
+    if avg_score < threshold:
+        violations.append(f"Average 5-Lens score ({avg_score:.1f}) is below threshold ({threshold:.1f})")
+
+    evaluations = getattr(report, "evaluations", {})
+    if isinstance(evaluations, dict):
+        for lens_name, eval_item in evaluations.items():
+            score = getattr(eval_item, "score", 0.0) if hasattr(eval_item, "score") else eval_item.get("score", 0.0) if isinstance(eval_item, dict) else 0.0
+            passed = getattr(eval_item, "passed", True) if hasattr(eval_item, "passed") else eval_item.get("passed", True) if isinstance(eval_item, dict) else True
+            if score < threshold:
+                violations.append(f"Lens '{lens_name}' score ({score:.1f}) is below threshold ({threshold:.1f})")
+            elif not passed:
+                violations.append(f"Lens '{lens_name}' marked as failed")
+
+    passed = len(violations) == 0 and bool(getattr(report, "overall_passed", True))
+    return passed, violations
+

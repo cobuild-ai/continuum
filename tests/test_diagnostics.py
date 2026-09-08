@@ -32,3 +32,35 @@ def test_preflight_run_all_checks():
     report = assessor.run_all_checks()
     assert len(report.checks) >= 5
     assert report.allowed is True  # Python and Git are valid
+
+
+def test_check_quality_threshold():
+    from vibe_server.core.diagnostics import check_quality_threshold
+    from vibe_server.core.models import LensReport, LensEvaluation
+
+    # Passing report: all lenses >= 70
+    passing = LensReport(
+        overall_passed=True,
+        average_score=85.0,
+        evaluations={
+            "CleanCode": LensEvaluation(lens_name="CleanCode", category="clean_code", score=80.0, passed=True),
+            "Security": LensEvaluation(lens_name="Security", category="security", score=90.0, passed=True)
+        }
+    )
+    passed, violations = check_quality_threshold(passing, threshold=70.0)
+    assert passed is True
+    assert len(violations) == 0
+
+    # Failing report: average and one lens below 70
+    failing = LensReport(
+        overall_passed=True,
+        average_score=65.0,
+        evaluations={
+            "CleanCode": LensEvaluation(lens_name="CleanCode", category="clean_code", score=55.0, passed=True),
+            "Security": LensEvaluation(lens_name="Security", category="security", score=75.0, passed=True)
+        }
+    )
+    passed, violations = check_quality_threshold(failing, threshold=70.0)
+    assert passed is False
+    assert len(violations) >= 2
+

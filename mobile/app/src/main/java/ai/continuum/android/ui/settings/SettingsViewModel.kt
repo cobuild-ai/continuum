@@ -13,7 +13,7 @@ import kotlinx.coroutines.launch
 data class SettingsUiState(
     val serverHost: String = "192.168.1.117",
     val serverPort: Int = 8080,
-    val targetRepoPath: String = "/Users/smilelife/Projects/OSSProject/01-production/deartalk-ai",
+    val targetRepoPath: String = "/workspace/project",
     val baseBranch: String = "main",
     val cleanCodeEnabled: Boolean = true,
     val archEnabled: Boolean = true,
@@ -23,7 +23,7 @@ data class SettingsUiState(
     val passThreshold: Int = 70,
     val vibrationEnabled: Boolean = true,
     val serverAiProvider: String = "gemini",
-    val serverAiModel: String = "gemini-3.8-flash",
+    val serverAiModel: String = "gemini-3.7-flash",
     val serverSkyBrainActive: Boolean = false,
     val connectionStatus: String = "Not Tested",
     val isTestingConnection: Boolean = false

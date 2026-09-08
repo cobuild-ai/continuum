@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ai.continuum.android.data.models.DiffSummary
 import ai.continuum.android.data.models.FileDiff
+import ai.continuum.android.data.models.LensReport
 import ai.continuum.android.data.models.VerificationReport
 import ai.continuum.android.ui.theme.*
 
@@ -31,6 +32,7 @@ fun DiffSummaryCard(
     onAcceptAll: () -> Unit,
     onRejectAll: () -> Unit,
     verificationReport: VerificationReport? = null,
+    lensReport: LensReport? = null,
     isActionable: Boolean = true,
     modifier: Modifier = Modifier
 ) {
@@ -44,6 +46,39 @@ fun DiffSummaryCard(
             .border(1.dp, CardBorder, RoundedCornerShape(12.dp))
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
+            // 5-Lens Quality Guardrail Alert Banner
+            if (lensReport != null) {
+                val avgScore = lensReport.averageScore
+                val isLowScore = avgScore < 70.0
+                val hasFailures = !lensReport.overallPassed
+                if (isLowScore || hasFailures) {
+                    val alertText = if (isLowScore) {
+                        "Quality Guardrail Alert: 5-Lens score is ${avgScore.toInt()}/100 (< 70). Review findings before merging."
+                    } else {
+                        "Quality Guardrail Alert: 5-Lens audit contains failed checks (${avgScore.toInt()}/100). Review findings before merging."
+                    }
+                    Surface(
+                        color = WarningYellow.copy(alpha = 0.12f),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp)
+                        ) {
+                            Text(text = "🛡️", fontSize = 13.sp)
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = alertText,
+                                color = WarningYellow,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+                    HorizontalDivider(color = CardBorder, thickness = 1.dp)
+                }
+            }
+
             // Verification Report Banner
             if (verificationReport != null) {
                 val isSuccess = verificationReport.testsPassed || verificationReport.verified
