@@ -8,7 +8,7 @@
   <a href="README.id.md">Bahasa Indonesia</a>
 </p>
 
-[![License: MIT](https://img.shields.io/badge/라이선스-MIT-blue.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/라이선스-Apache%202.0-blue.svg)](LICENSE)
 [![Python: 3.11+](https://img.shields.io/badge/Python-3.11%2B-green.svg)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/프레임워크-FastAPI-009688.svg)](https://fastapi.tiangolo.com/)
 [![Android Client](https://img.shields.io/badge/클라이언트-Kotlin%20Compose-3DDC84.svg)](mobile/README.md)
@@ -145,4 +145,4 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 ## 📜 라이선스 및 오픈소스 거버넌스
 
-Continuum은 **MIT 라이선스** 하에 배포되는 오픈소스 소프트웨어입니다. [cobuild-ai](https://github.com/cobuild-ai)의 엔터프라이즈 거버넌스 표준에 따라 투명하게 관리됩니다.
+Continuum은 **Apache License 2.0** 하에 배포되는 오픈소스 소프트웨어입니다. [cobuild-ai](https://github.com/cobuild-ai)의 엔터프라이즈 거버넌스 표준에 따라 투명하게 관리됩니다.

@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Continuum: Mobile-First Vibe Coding & Host Sandbox Orchestration Engine"
 readme = "README.md"
 requires-python = ">=3.11"
-license = { text = "MIT" }
+license = { text = "Apache-2.0" }
 authors = [
     { name = "Smilelife & AI Co-Engineers", email = "deartalkai.dev@gmail.com" }
 ]
