@@ -8,7 +8,7 @@
   <b>Bahasa Indonesia</b>
 </p>
 
-[![Lisensi: MIT](https://img.shields.io/badge/Lisensi-MIT-blue.svg)](LICENSE)
+[![Lisensi: MIT](https://img.shields.io/badge/Lisensi-Apache%202.0-blue.svg)](LICENSE)
 [![Python: 3.11+](https://img.shields.io/badge/Python-3.11%2B-green.svg)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/Framework-FastAPI-009688.svg)](https://fastapi.tiangolo.com/)
 [![Android Client](https://img.shields.io/badge/Klien-Kotlin%20Compose-3DDC84.svg)](mobile/README.md)
@@ -145,4 +145,4 @@ Buka aplikasi **Continuum** di ponsel Anda, atur IP Host (misalnya `192.168.1.xx
 
 ## 📜 Lisensi & Tata Kelola Sumber Terbuka
 
-Continuum adalah perangkat lunak sumber terbuka di bawah lisensi **MIT License**. Dikelola secara transparan di bawah standar tata kelola enterprise [cobuild-ai](https://github.com/cobuild-ai).
+Continuum adalah perangkat lunak sumber terbuka di bawah lisensi **Apache License 2.0**. Dikelola secara transparan di bawah standar tata kelola enterprise [cobuild-ai](https://github.com/cobuild-ai).
