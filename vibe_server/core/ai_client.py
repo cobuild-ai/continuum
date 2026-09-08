@@ -15,13 +15,13 @@ logger = logging.getLogger(__name__)
 GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
 SKYBRAIN_URL = "http://127.0.0.1:8000/v1/chat/completions"
 
-# 1순위: gemini-3.8-flash (최상의 코딩 성능)
-# 2순위: gemini-3.7-flash, gemini-2.5-flash (429/지연 시 비용 절감 및 백업)
+# 1순위: gemini-3.7-flash (최상의 코딩 및 추론 성능)
+# 2순위: gemini-2.5-flash, gemini-flash-latest
 # 3순위: Local SkyBrain (Qwen 3.8) (클라우드 모델 429/실패 시 $0 무과금 로컬 오프로딩)
 GEMINI_FLASH_CANDIDATES = [
-    "gemini-3.8-flash",
     "gemini-3.7-flash",
     "gemini-2.5-flash",
+    "gemini-flash-latest",
 ]
 
 CLAUDE_API_URL = "https://api.anthropic.com/v1/messages"
