@@ -50,6 +50,15 @@ Android 스마트폰에서 실시간 대화로 AI 기능 구현을 지시하고,
 
 ---
 
+## 📱 모바일 퍼스트 Vibe Coding 실기기 쇼케이스 (Samsung Galaxy S22 Ultra)
+
+| 1️⃣ 대화형 페어 프로그래밍 | 2️⃣ 아키텍처 구체화 제안 | 3️⃣ 5대 렌즈 품질 게이트 | 4️⃣ 인라인 Diff & 원터치 머지 |
+| :---: | :---: | :---: | :---: |
+| <img src="docs/images/continuum_pair_programming_dialog.png" width="180" alt="1단계: 페어 프로그래밍"> | <img src="docs/images/continuum_architecture_blueprint.png" width="180" alt="2단계: 아키텍처 설계"> | <img src="docs/images/continuum_5lens_quality_gate.png" width="180" alt="3단계: 5대 렌즈 평가"> | <img src="docs/images/continuum_inline_diff_merge.png" width="180" alt="4단계: 인라인 Diff 및 승인"> |
+| **기술 트레이드오프 토론**<br>개발자의 `SharedFlow` vs `WorkManager` 질의에 AI가 포그라운드/백그라운드 하이브리드 라우팅 구조 제안. | **Clean Architecture & MVI**<br>4계층 청사진(`Dispatcher`, `Room DataSource`, `UiState`, `ViewModel`) 수립. | **SkyBrain 5대 렌즈 평가**<br>클린코드·아키텍처·보안·성능·AI수행 5대 축 자율 진단 (**95/100점** 달성). | **인라인 Diff & 원터치 머지**<br>실측 단위 테스트 100% 통과(`Tests: 4/4 Passed`) 및 모바일 `[Accept all]` 원터치 승인. |
+
+---
+
 ## 🌟 핵심 플랫폼 기능
 
 ### 📱 1. 모바일 퍼스트 Vibe Coding 인터페이스

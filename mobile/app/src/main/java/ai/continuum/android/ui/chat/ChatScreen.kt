@@ -576,7 +576,10 @@ fun ChatScreen(
                                             color = TextPrimary
                                         )
                                         Text(
-                                            text = proj.path.substringAfterLast("OSSProject/"),
+                                            text = proj.path.let { p ->
+                                                val segs = p.trimEnd('/').split('/')
+                                                if (segs.size >= 2) "${segs[segs.size - 2]}/${segs.last()}" else p
+                                            },
                                             fontSize = 11.sp,
                                             color = TextSecondary,
                                             maxLines = 1,

@@ -50,6 +50,15 @@ Perintahkan pengembangan perangkat lunak AI, periksa perubahan kode baris demi b
 
 ---
 
+## 📱 Pameran Vibe Coding Mobile-First (Samsung Galaxy S22 Ultra)
+
+| 1️⃣ Pair Programming | 2️⃣ Proposal Arsitektur | 3️⃣ Gate Kualitas 5 Lensa | 4️⃣ Diff Inline & Merge 1-Ketuk |
+| :---: | :---: | :---: | :---: |
+| <img src="docs/images/continuum_pair_programming_dialog.png" width="180" alt="Langkah 1: Pair Programming"> | <img src="docs/images/continuum_architecture_blueprint.png" width="180" alt="Langkah 2: Proposal Arsitektur"> | <img src="docs/images/continuum_5lens_quality_gate.png" width="180" alt="Langkah 3: Evaluasi 5 Lensa"> | <img src="docs/images/continuum_inline_diff_merge.png" width="180" alt="Langkah 4: Diff Inline & Merge"> |
+| **Diskusi Trade-off Teknis**<br>Pertanyaan developer tentang `SharedFlow` vs `WorkManager`; AI menyarankan arsitektur routing hybrid. | **Clean Architecture & MVI**<br>Rancangan cetak biru 4 lapisan (`Dispatcher`, `Room DataSource`, `UiState`, `ViewModel`). | **Evaluasi 5 Lensa SkyBrain**<br>Tinjauan statis otonom (**95/100**) menilai CleanCode, Arsitektur, Keamanan, Performa, dan AI Conduct. | **Diff Inline & Persetujuan Cepat**<br>Semua unit test lolos 100% (`Tests: 4/4 Passed`) dan tombol persetujuan `[Accept all]` langsung ke `main`. |
+
+---
+
 ## 🌟 Fitur Utama Platform
 
 ### 📱 1. Antarmuka Vibe Coding Mobile-First

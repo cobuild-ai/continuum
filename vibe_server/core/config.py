@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     debug: bool = False
     
     # Workspace & Git
-    default_workspace_root: Path = Path(os.getenv("CONTINUUM_DEFAULT_WORKSPACE_ROOT", str(Path.home() / "Projects" / "OSSProject" / "01-production")))
+    default_workspace_root: Path = Path(os.getenv("CONTINUUM_DEFAULT_WORKSPACE_ROOT", str(Path.cwd())))
     ai_branch_prefix: str = "ai/"
     
     # Sandbox

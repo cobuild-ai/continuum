@@ -48,7 +48,7 @@ class PreflightAssessor:
 
     def __init__(self, target_port: int = 8080, workspace_root: Optional[Path] = None):
         self.target_port = target_port
-        self.workspace_root = workspace_root or Path(os.getenv("CONTINUUM_WORKSPACE_ROOT", str(Path.home() / "Projects" / "OSSProject")))
+        self.workspace_root = workspace_root or Path(os.getenv("CONTINUUM_WORKSPACE_ROOT", str(Path.cwd())))
 
     def check_python_version(self) -> CheckItem:
         major, minor = sys.version_info.major, sys.version_info.minor
