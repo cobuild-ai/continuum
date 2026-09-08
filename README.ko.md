@@ -109,7 +109,7 @@ Android 스마트폰에서 실시간 대화로 AI 기능 구현을 지시하고,
 ### 2. 호스트 서버 셋업 및 기동
 ```bash
 # 저장소 클론
-git clone https://github.com/cobuild-ai/Continuum.git
+git clone https://github.com/cobuild-ai/continuum.git
 cd Continuum
 
 # 가상환경 생성 및 패키지 설치

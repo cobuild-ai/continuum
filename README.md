@@ -109,7 +109,7 @@ Command AI software development, inspect inline line-by-line diffs, evaluate 5-L
 ### 2. Host Server Setup & Launch
 ```bash
 # Clone the repository
-git clone https://github.com/cobuild-ai/Continuum.git
+git clone https://github.com/cobuild-ai/continuum.git
 cd Continuum
 
 # Install dependencies in isolated virtual environment
