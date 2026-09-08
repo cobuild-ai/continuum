@@ -8,7 +8,7 @@
   <a href="README.id.md">Bahasa Indonesia</a>
 </p>
 
-[![License: MIT](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![Python: 3.11+](https://img.shields.io/badge/Python-3.11%2B-green.svg)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/Framework-FastAPI-009688.svg)](https://fastapi.tiangolo.com/)
 [![Android Client](https://img.shields.io/badge/Client-Kotlin%20Compose-3DDC84.svg)](mobile/README.md)

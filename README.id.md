@@ -8,7 +8,7 @@
   <b>Bahasa Indonesia</b>
 </p>
 
-[![Lisensi: MIT](https://img.shields.io/badge/Lisensi-Apache%202.0-blue.svg)](LICENSE)
+[![Lisensi: Apache 2.0](https://img.shields.io/badge/Lisensi-Apache%202.0-blue.svg)](LICENSE)
 [![Python: 3.11+](https://img.shields.io/badge/Python-3.11%2B-green.svg)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/Framework-FastAPI-009688.svg)](https://fastapi.tiangolo.com/)
 [![Android Client](https://img.shields.io/badge/Klien-Kotlin%20Compose-3DDC84.svg)](mobile/README.md)
