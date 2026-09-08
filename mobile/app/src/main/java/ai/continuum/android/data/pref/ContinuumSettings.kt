@@ -60,7 +60,7 @@ object ContinuumSettings {
 
     // Target Repo
     fun getTargetRepoPath(context: Context): String =
-        getPrefs(context).getString(KEY_TARGET_REPO_PATH, "/Users/smilelife/Projects/OSSProject/01-production/deartalk-ai") ?: "/Users/smilelife/Projects/OSSProject/01-production/deartalk-ai"
+        getPrefs(context).getString(KEY_TARGET_REPO_PATH, "/workspace/project") ?: "/workspace/project"
     fun setTargetRepoPath(context: Context, path: String) = getPrefs(context).edit().putString(KEY_TARGET_REPO_PATH, path).apply()
 
     fun getTargetBaseBranch(context: Context): String =

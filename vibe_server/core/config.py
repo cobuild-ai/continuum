@@ -1,4 +1,4 @@
-"""Server configuration settings."""
+import os
 from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -11,8 +11,8 @@ class Settings(BaseSettings):
     port: int = 8080
     debug: bool = False
     
-    # Workspace & Git (01-production scoped anchor)
-    default_workspace_root: Path = Path("/Users/smilelife/Projects/OSSProject/01-production")
+    # Workspace & Git
+    default_workspace_root: Path = Path(os.getenv("CONTINUUM_DEFAULT_WORKSPACE_ROOT", str(Path.home() / "Projects" / "OSSProject" / "01-production")))
     ai_branch_prefix: str = "ai/"
     
     # Sandbox
@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     ai_provider: str = "gemini"
     
     # Gemini Configuration
-    gemini_model: str = "gemini-3.8-flash"
+    gemini_model: str = "gemini-3.7-flash"
     gemini_api_key: str = ""
     gemini_api_url: str = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
 

@@ -73,12 +73,19 @@ class AutonomousAgentLoop:
             logs.append(f"--- Turn {turn}/{self.max_turns} ---")
             
             # 1. Ask AI for next step
-            response_text = self.ai_client.generate_chat(
+            ai_res = self.ai_client.generate_chat(
                 system_prompt=SYSTEM_AGENT_PROMPT,
                 user_prompt=current_input,
                 history=history
             )
-            logs.append(f"Agent response: {response_text[:200]}...")
+            if isinstance(ai_res, tuple):
+                response_text = ai_res[0] or ""
+                engine_name = ai_res[1] or "unknown"
+            else:
+                response_text = ai_res or ""
+                engine_name = "unknown"
+
+            logs.append(f"Agent response ({engine_name}): {response_text[:200]}...")
 
             # 2. Parse tool action
             action_data = self._parse_action(response_text)

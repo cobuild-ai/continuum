@@ -399,6 +399,7 @@ fun ChatScreen(
                                 },
                                 onRejectAll = { viewModel.rejectTask(task.id) },
                                 verificationReport = task.verificationReport,
+                                lensReport = task.lensReport,
                                 isActionable = task.state == TaskState.AWAITING_MERGE_APPROVAL
                             )
                         }
