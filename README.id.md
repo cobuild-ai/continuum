@@ -109,7 +109,7 @@ Perintahkan pengembangan perangkat lunak AI, periksa perubahan kode baris demi b
 ### 2. Penyiapan & Menjalankan Server Host
 ```bash
 # Kloning repositori
-git clone https://github.com/cobuild-ai/Continuum.git
+git clone https://github.com/cobuild-ai/continuum.git
 cd Continuum
 
 # Buat virtual environment dan pasang dependensi
