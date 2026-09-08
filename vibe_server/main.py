@@ -132,7 +132,7 @@ def discover_projects(workspace_root: Path) -> List[ProjectInfo]:
     scan_roots = []
     if workspace_root.exists():
         scan_roots.append(workspace_root)
-    # If workspace_root is e.g. 01-production, also scan sibling tiers under OSSProject
+    # If workspace_root is a specific sub-folder, also scan sibling project tiers if present
     if workspace_root.parent.exists() and workspace_root.parent != workspace_root:
         for sibling in workspace_root.parent.iterdir():
             if sibling.is_dir() and sibling.name.startswith(("01-", "02-", "03-")):

@@ -114,10 +114,13 @@ fun DiffSummaryCard(
                                 fontWeight = FontWeight.Bold
                             )
 
-                            val detailText = if (verificationReport.commandRun.isNotEmpty()) {
-                                "${verificationReport.commandRun} • ${verificationReport.iterations} Turn(s)"
+                            val rawCommand = verificationReport.commandRun
+                                .replace(Regex(".*/(?:OSSProject|Projects)/[^/]+/"), "./")
+                                .replace(Regex(".*/\\.venv/bin/"), "./")
+                            val detailText = if (rawCommand.isNotEmpty()) {
+                                "$rawCommand • ${verificationReport.iterations} Turn(s)"
                             } else if (verificationReport.summary.isNotEmpty()) {
-                                verificationReport.summary
+                                verificationReport.summary.replace(Regex(".*/(?:OSSProject|Projects)/[^/]+/"), "./")
                             } else {
                                 ""
                             }
@@ -264,7 +267,10 @@ private fun FileRowItem(
     onClick: () -> Unit
 ) {
     val fileName = file.filepath.substringAfterLast("/")
-    val fileDir = file.filepath.substringBeforeLast("/", "")
+    val fileDir = file.filepath
+        .substringBeforeLast("/", "")
+        .replace(Regex(".*/(?:OSSProject|Projects)/[^/]+/"), "")
+        .replace(Regex("^/+"), "")
     val iconEmoji = when {
         fileName.endsWith(".kt") -> "🟠"
         fileName.endsWith(".py") -> "🐍"

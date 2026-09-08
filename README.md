@@ -50,6 +50,15 @@ Command AI software development, inspect inline line-by-line diffs, evaluate 5-L
 
 ---
 
+## 📱 Mobile-First Vibe Coding Showcase (Samsung Galaxy S22 Ultra)
+
+| 1️⃣ Pair Programming | 2️⃣ Architecture Proposal | 3️⃣ 5-Lens Quality Gate | 4️⃣ Inline Diff & Merge Gate |
+| :---: | :---: | :---: | :---: |
+| <img src="docs/images/continuum_pair_programming_dialog.png" width="180" alt="Step 1: Pair Programming"> | <img src="docs/images/continuum_architecture_blueprint.png" width="180" alt="Step 2: Architecture Blueprint"> | <img src="docs/images/continuum_5lens_quality_gate.png" width="180" alt="Step 3: 5-Lens Quality Gate"> | <img src="docs/images/continuum_inline_diff_merge.png" width="180" alt="Step 4: Inline Diff & Merge"> |
+| **Architectural Trade-off Dialog**<br>Developer queries `SharedFlow` vs `WorkManager`; AI recommends hybrid routing architecture. | **Clean Architecture & MVI**<br>AI outlines 4-tier blueprint (`Dispatcher`, `Room DataSource`, `UiState`, `ViewModel`). | **SkyBrain 5-Lens Review**<br>Autonomous static review (**95/100**) evaluating CleanCode, Arch, Security, Perf, and AI Conduct. | **Inline Diff & One-Touch Merge**<br>Real test suite pass (`Tests: 4/4 Passed`) and one-touch `[Accept all]` squash merge into `main`. |
+
+---
+
 ## 🌟 Key Platform Features
 
 ### 📱 1. Mobile-First Vibe Coding Interface
